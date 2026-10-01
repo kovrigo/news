@@ -177,6 +177,14 @@ td { padding: 8px 12px; border-top: 1px solid var(--rule); vertical-align: top; 
 .plate.over { outline: 2px solid var(--check); }
 .sync-bracket { display: flex; flex-direction: column; gap: 4px; }
 .sync-bracket .br { border: 2px solid var(--primary); border-right: 0; height: 28px; width: 12px; margin: 4px 0 4px 4px; }
+/* the bracket runs beside the timecode from the start of the sync to its end; a phone has the timecode above the phrase, no bracket */
+@media (min-width: 700px) {
+  .line:has(> .sync-bracket) { align-items: stretch; }
+  .sync-bracket .br { position: absolute; right: -4px; top: 4px; bottom: 4px; width: 6px; height: auto; margin: 0; }
+}
+@media (max-width: 699px) {
+  .sync-bracket .br { display: none; }
+}
 .speaker-btn { border: 0; background: none; font-weight: 600; padding: 4px; margin-left: -4px; cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 4px; }
 .speaker-btn:hover { background: var(--page); }
 .turn { margin: 20px 0 8px 96px; display: flex; gap: var(--sm); align-items: center; flex-wrap: wrap; font-size: 0.875rem; }
