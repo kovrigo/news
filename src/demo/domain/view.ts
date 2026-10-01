@@ -1,6 +1,6 @@
 import { NO_SOURCE_REASONS } from '../../core/failures.ts';
 import type { Place as SrcPlace } from '../../core/source.ts';
-import { dayOf, fmtSpan } from '../format.ts';
+import { dayOf, fmtDateTime, fmtSpan } from '../format.ts';
 import { ACTION_LABELS, APPROVE_LABELS, DRAFT_NAMES, NO_EDITOR, ROLE_LABELS, STORY_DELETED, stateWord } from '../texts.ts';
 import { processingInfo } from './build.ts';
 import { lockIsLive } from './edit.ts';
@@ -373,8 +373,11 @@ export function journalView(state: State, q: JournalQuery): {
     .sort((a, b) => b.at - a.at || b.id - a.id);
   // newest first, a page at a time; the page says how many there are in all
   const rows = found.slice(0, Math.max(JOURNAL_PAGE, Math.floor(q.limit ?? JOURNAL_PAGE)));
-  const seen = new Map<string, string>();
-  for (const r of state.journal) if (r.storyId) seen.set(r.storyId, r.storyTitle);
+  // a story's first row is its upload: two stories with one title differ by that time in the filter
+  const seen = new Map<string, { title: string; at: number }>();
+  for (const r of state.journal) if (r.storyId) seen.set(r.storyId, { title: r.storyTitle, at: Math.min(r.at, seen.get(r.storyId)?.at ?? r.at) });
+  const titles = [...seen.values()].map((x) => x.title);
+  const twice = (t: string): boolean => titles.indexOf(t) !== titles.lastIndexOf(t);
   return {
     rows: rows.map((r) => ({
       id: r.id, at: r.at, userName: r.userName, action: r.action, actionLabel: ACTION_LABELS[r.action] ?? r.action,
@@ -382,7 +385,7 @@ export function journalView(state: State, q: JournalQuery): {
       factText: r.storyDeleted && r.action === 'take_over' ? STORY_DELETED : (r.factText ?? ''),
     })),
     total: found.length,
-    stories: [...seen].map(([id, title]) => ({ id, title })),
+    stories: [...seen].map(([id, x]) => ({ id, title: twice(x.title) ? `${x.title}, загружен ${fmtDateTime(x.at)}` : x.title })),
     users: state.users.map((u) => ({ id: u.id, name: u.name })),
     actions: Object.entries(ACTION_LABELS).map(([id, label]) => ({ id, label })),
   };
