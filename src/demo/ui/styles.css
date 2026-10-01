@@ -276,7 +276,9 @@ legend { font-weight: 600; margin-bottom: var(--xs); padding: 0; }
   .sheet-head, .sheet-body { padding: 16px; }
   .btn, .src, .fact, .mark-word, .nav a, .speaker-btn, input[type='text'], input[type='number'], input[type='search'], select { min-height: 44px; }
   .btn.small, .btn.link { min-height: 44px; }
+  /* the tap area grows by padding; the highlight stays on the text line, not over its neighbours */
   .fact, .mark-word { padding-top: 12px; padding-bottom: 12px; }
+  .fact, .mark-word, .fact:hover, .fact:focus-visible, .line.selected .fact.on { background-clip: content-box; }
   .src { display: inline-flex; align-items: center; gap: 8px; }
   .check-row { min-height: 44px; }
   .check-row input { margin-top: 12px; }
