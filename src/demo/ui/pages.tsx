@@ -92,7 +92,7 @@ export function List() {
                       {s.marks > 0 && <span className="tag check">{s.marks} {plural(s.marks, 'пометка', 'пометки', 'пометок')}</span>}
                       <span>утверждено {s.approved} из {s.total}</span>
                       {data.showTimes && (
-                        <span className="mono">{s.timeToApprovalMs === null ? 'ещё не утверждён' : `до утверждения: ${duration(s.timeToApprovalMs)}`}</span>
+                        <span>{s.timeToApprovalMs === null ? 'ещё не утверждён' : <>до утверждения: <span className="mono">{duration(s.timeToApprovalMs)}</span></>}</span>
                       )}
                     </div>
                   </li>
