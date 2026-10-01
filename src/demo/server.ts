@@ -20,6 +20,8 @@ const server = Bun.serve({
   hostname: '127.0.0.1',
   port: Number(process.env.PORT),
   maxRequestBodySize: BODY_MAX,
+  // the minified page with React's production build: the development build drew a 500-row journal four times slower
+  development: false,
   routes: { '/': index },
   fetch: (req) => (new URL(req.url).pathname.startsWith('/api/') ? app.fetch(req) : new Response('Нет такого адреса', { status: 404 })),
 });
