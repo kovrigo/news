@@ -139,7 +139,7 @@ export function SourcePane(p: Props) {
             </div>
             <div className="controls">
               <button type="button" className="btn" onClick={toggle}>{player.playing ? 'Пауза' : 'Воспроизвести'}</button>
-              <span className="mono" aria-label="Текущее время">{clock(player.t, long)}</span>
+              <span className="mono"><span className="sr">Текущее время: </span>{clock(player.t, long)}</span>
               <input
                 type="range" min={0} max={duration} step={100} value={player.t}
                 aria-label="Положение в видео" aria-valuetext={clock(player.t, long)}
@@ -147,7 +147,7 @@ export function SourcePane(p: Props) {
               />
               <span className="mono">{clock(duration, long)}</span>
             </div>
-            <p className="now-text" aria-label="Текст в этом месте">{nowSeg ? <>«{nowSeg.text}»</> : <span className="muted">В этом месте речи нет</span>}</p>
+            <p className="now-text"><span className="sr">Текст в этом месте: </span>{nowSeg ? <>«{nowSeg.text}»</> : <span className="muted">В этом месте речи нет</span>}</p>
             {!transcriptOnly && (
               <section aria-label="Расшифровка вокруг места">
                 <h3>{p.picking ? 'Выберите место' : 'Расшифровка'}</h3>
