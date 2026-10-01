@@ -332,7 +332,6 @@ function DraftPane(p: PaneProps) {
     return () => removeEventListener('resize', fitFields);
   }, [fitFields]);
 
-
   // an edited sentence is being checked: look again when the check is due
   const checking = d.sentences.some((x) => x.checking);
   useEffect(() => {
@@ -738,7 +737,7 @@ function DraftPane(p: PaneProps) {
 
       <div className="review-note" role="status">
         <span className={`icon${approveReason && d.state !== 'approved' ? '' : ' ok'}`} aria-hidden="true">{approveReason && d.state !== 'approved' ? '!' : '✓'}</span>
-        <div>
+        <div id="review-why">
           {pendingMarks.length > 0 ? (
             <>
               <b>{user?.canApprove ? 'Утверждение недоступно: ' : ''}</b>
@@ -767,12 +766,14 @@ function DraftPane(p: PaneProps) {
         {d.mayApprove && !['failed', 'not_needed'].includes(d.state) && d.state !== 'approved' && (
           <>
             <button
-              type="button" className="btn primary" aria-disabled={!!approveReason || !online} aria-describedby="why-approve"
+              type="button" className="btn primary" aria-disabled={!!approveReason || !online}
+              aria-describedby={[approveReason && 'review-why', !online && 'why-approve'].filter(Boolean).join(' ') || undefined}
               onClick={() => !approveReason && online && void act('approve', { version: d.version, basedOn: d.basedOn, clickKey: approveKey })}
             >
               {d.approveLabel}
             </button>
-            {(approveReason || !online) && <span id="why-approve" className="note">{!online ? 'Без связи утвердить нельзя' : approveReason}</span>}
+            {/* the reason itself is written once, in the note above */}
+            {!online && <span id="why-approve" className="note">Без связи утвердить нельзя</span>}
           </>
         )}
         {d.maySubmit && <button type="button" className="btn primary" onClick={() => void act('submit')}>Отправить на проверку</button>}
