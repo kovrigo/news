@@ -209,6 +209,8 @@ function applyOp(state: State, ctx: Ctx, story: Story, d: Draft, baseVersion: nu
       if (d.state === 'not_built') {
         d.state = 'draft';
         d.decisions['insufficient'] = { kind: 'accept', userId: ctx.user.id, at: ctx.now, reason: 'дописано вручную' };
+        // the decision is journaled like a press on «Принять как есть»; the edit itself gets its own row from bump
+        addJournal(state, ctx, story, 'accept_asis', { draft: d.kind, detail: 'дописано вручную' });
       }
       return bump(state, ctx, story, d);
     }
