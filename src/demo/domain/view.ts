@@ -389,5 +389,6 @@ export function journalView(state: State, q: JournalQuery): {
 }
 
 export const publicUser = (u: User): { id: string; name: string; role: string; roleLabel: string; canApprove: boolean; enabled: boolean } => ({
-  id: u.id, name: u.name, role: u.role, roleLabel: ROLE_LABELS[u.role], canApprove: u.canApprove, enabled: u.enabled,
+  // the right is shown as it is now: the chief editor can give it to a correspondent or take it from an editor
+  id: u.id, name: u.name, role: u.role, roleLabel: ROLE_LABELS[u.role] + (u.canApprove && u.role !== 'chief' ? ', право утверждать' : ''), canApprove: u.canApprove, enabled: u.enabled,
 });

@@ -11,7 +11,7 @@ export const TIME_ZONE = 'Europe/Moscow';
 
 export const ROLE_LABELS: Record<Role, string> = {
   correspondent: 'корреспондент',
-  editor: 'выпускающий редактор, право утверждать',
+  editor: 'выпускающий редактор',
   chief: 'главный редактор',
 };
 
