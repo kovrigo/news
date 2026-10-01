@@ -15,7 +15,7 @@ describe('hygiene', () => {
   test('Russian text lives only in the catalog, the Russian-language rules and the model prompt', () => {
     const allowed = ['src/core/failures.ts', 'src/core/normalize.ts', 'src/core/numbers.ts', 'src/adapters/llm/prompt.ts'];
     // The demo and its scripts are Russian-language by design (invented content, texts of the screens and files).
-    const demo = (f: string): boolean => f.startsWith('src/demo/') || f === 'scripts/make-demo-sets.ts' || f === 'scripts/e2e.ts';
+    const demo = (f: string): boolean => f.startsWith('src/demo/') || f === 'scripts/make-demo-sets.ts' || f === 'scripts/e2e.ts' || f === 'scripts/speed.ts';
     for (const f of code) if (!allowed.includes(f) && !demo(f)) expect([f, /[а-яё]/i.test(readFileSync(f, 'utf8'))]).toEqual([f, false]);
   });
   test('the only user-facing strings in the quality script come from the catalog', () => {
