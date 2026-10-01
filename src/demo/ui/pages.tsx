@@ -275,7 +275,7 @@ export function Staff() {
       <p className="note">В демо три учётные записи. Права меняются у них; приглашений и входа по паролю нет.</p>
       {error && <p className="field-error" role="alert">{error}</p>}
       <div className="panel scroll-x">
-        <table>
+        <table className="cards-sm">
           <thead>
             <tr><th scope="col">Имя</th><th scope="col">Роль</th><th scope="col">Право утверждать</th><th scope="col">Состояние</th></tr>
           </thead>
@@ -283,14 +283,14 @@ export function Staff() {
             {data.staff.map((s) => (
               <tr key={s.id}>
                 <td>{s.name}</td>
-                <td>{s.roleLabel}</td>
-                <td>
+                <td data-label="Роль">{s.roleLabel}</td>
+                <td data-label="Право утверждать">
                   <span className="tag">{s.canApprove ? 'есть' : 'нет'}</span>{' '}
                   <button type="button" className="btn small" aria-label={`${s.canApprove ? 'Снять право утверждать у' : 'Дать право утверждать'}: ${s.name}`} onClick={() => void change(s.id, { canApprove: !s.canApprove })}>
                     {s.canApprove ? 'Снять право' : 'Дать право'}
                   </button>
                 </td>
-                <td>
+                <td data-label="Состояние">
                   <span className="tag">{s.enabled ? 'включён' : 'отключён'}</span>{' '}
                   {s.id === user.id ? (
                     <span className="note">Себя отключить нельзя</span>
@@ -368,12 +368,12 @@ export function Directory() {
           {data.canEdit && <button type="button" className="btn" onClick={() => setEdit({ kind: 'people', id: null, name: '', position: '' })}>Добавить человека</button>}
         </div>
         {people.length === 0 ? <p className="block muted">Справочник пуст. Без него титры не с чем сверить</p> : (
-          <div className="scroll-x"><table>
+          <div className="scroll-x"><table className="cards-sm">
             <thead><tr><th scope="col">ФИО</th><th scope="col">Должность</th>{data.canEdit && <th scope="col">Действия</th>}</tr></thead>
             <tbody>
               {people.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.name}</td><td>{p.position}</td>
+                  <td>{p.name}</td><td data-label="Должность">{p.position}</td>
                   {data.canEdit && (
                     <td><div className="form-row">
                       <button type="button" className="btn small" aria-label={`Править: ${p.name}, ${p.position}`} onClick={() => setEdit({ kind: 'people', id: p.id, name: p.name, position: p.position })}>Править</button>
