@@ -144,18 +144,24 @@ export function useEditor(a: { userId: string; storyId: string; kind: string; ve
       close();
     };
   }, [editing, base]);
-  // leaving the page (or a login that ran out) must not lose typed text: keep it for the next visit
-  useEffect(
-    () => () => {
+  // typed text not sent yet is kept for the next visit: when the draft is left in the app,
+  // and when the tab is closed or reloaded (React does not unmount then, only pagehide fires)
+  useEffect(() => {
+    const keep = (): void => {
       Object.values(timers.current).forEach(clearTimeout);
       const left = Object.values(pending.current);
+      pending.current = {};
       if (left.length === 0) return;
       const k = storeKey(a.userId, a.storyId, a.kind);
       const old = readUnsent(k) ?? { version: version.current, items: [] };
       writeUnsent(k, { version: old.version, items: [...old.items, ...left] });
-    },
-    [],
-  );
+    };
+    addEventListener('pagehide', keep);
+    return () => {
+      removeEventListener('pagehide', keep);
+      keep();
+    };
+  }, []);
   // the lock was lost (expired or taken): leave edit mode
   useEffect(() => {
     if (editing && !a.lockedByMe && !dirty() && save.status !== 'saving') setEditing(false);

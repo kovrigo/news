@@ -101,6 +101,16 @@ describe('malformed output', () => {
     const r = await runStory(STORY, { asr: mockAsr(STORY), model });
     expect(r.drafts.find((d) => d.kind === 'titles')!.failure?.code).toBe('malformed_output');
   });
+  test('a sync with an unknown piece or across two videos is malformed, not silently dropped', async () => {
+    const m = (await runStory(STORY, base())).material;
+    const [a, b] = [m.segments.find((s) => s.videoId === 'V1')!.id, m.segments.find((s) => s.videoId === 'V2')!.id];
+    for (const bad of [{ fromRef: 'S999', toRef: a }, { fromRef: a, toRef: b }]) {
+      const items = [bad, { fromRef: a, toRef: a, note: 'x' }, { fromRef: a, toRef: a, note: 'y' }].map((x) => ({ note: 'z', ...x }));
+      const { model } = wrap((kind) => (kind === 'syncs' ? JSON.stringify({ kind: 'syncs', items, flags: [] }) : undefined));
+      const r = await runStory(STORY, { asr: mockAsr(STORY), model });
+      expect(r.drafts.find((d) => d.kind === 'syncs')!.failure?.code).toBe('malformed_output');
+    }
+  });
 });
 
 describe('unknown files', () => {

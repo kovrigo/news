@@ -1,6 +1,6 @@
 # news-draft-assistant: demo on invented data
 
-The demo shows the whole work with a draft package of one story: three roles, the story screen from mockup A, yellow marks and decisions, editing, approval, return, export, journal, staff, directory, delete. **All people, places, organisations and events are invented. The demo uses invented data only.** Nothing is uploaded, no model is called, no network client is in the code. Processing runs only on the recorded mock adapters.
+The demo shows the whole work with a draft package of one story: three roles, the story screen from mockup A, yellow marks and decisions, editing, approval, return, export, journal, staff, directory, delete. **All people, places, organisations and events are invented. The demo uses invented data only.** Nothing is uploaded, no model is called, and the code has no client for outside services: the browser talks only to the demo's own server. Processing runs only on the recorded mock adapters.
 
 ## View the demo
 
@@ -16,7 +16,7 @@ Open the URL that `paneweb up` prints (the `local:` address works on this machin
 - Павел Тестов — выпускающий редактор, право утверждать;
 - Анна Пробная — главный редактор.
 
-Typed text is not filtered: sentence edits, return comments, reasons, speaker names and directory entries are saved as entered. No program can tell invented text from real material, so the rule is on people: never type or paste real material or real people's data into the demo. Everything typed is written to `out/demo/state.json` on this machine at once; `bun run demo-reset` replaces that file with the invented seed, which removes it. An edit not yet saved while offline waits in the browser's localStorage, under the account that typed it, and is saved when the connection returns. Every `demo-reset` writes a new `resetId` into the state; the browser remembers the last one it saw (`localStorage['demo-reset-id']`). The next time a browser opens the demo after a reset, it deletes all its `unsent:*` drafts before any draft opens. A browser that never opens the demo again keeps such a draft until its storage is cleared.
+Typed text is not filtered: sentence edits, return comments, reasons, speaker names and directory entries are saved as entered. No program can tell invented text from real material, so the rule is on people: never type or paste real material or real people's data into the demo. Everything typed is written to `out/demo/state.json` on this machine at once; `bun run demo-reset` replaces that file with the invented seed, which removes it. An edit not yet saved while offline waits in the browser's localStorage, under the account that typed it (text typed right before the tab closes is kept there too), and is saved when the connection returns. Every `demo-reset` writes a new `resetId` into the state; the browser remembers the last one it saw (`localStorage['demo-reset-id']`). The next time a browser opens the demo after a reset, it deletes all its `unsent:*` drafts before any draft opens. A browser that never opens the demo again keeps such a draft until its storage is cleared.
 
 A role switch is «Сменить роль»: a logout plus a login. Every page carries the banner «Демо на придуманных данных. Не загружайте и не вставляйте настоящие материалы.», every exported file starts with `ДЕМО — придуманные данные, не для эфира`.
 
@@ -36,7 +36,7 @@ Stop it with `paneweb down`. Never start the server by hand: `bun run dev` needs
 | `bun run quality --models=mock --set=fixtures/demo` | the prototype quality scenario, see below | 0 pass, 1 a threshold fails |
 | `bun run scripts/make-demo-sets.ts` | one line per built-in source set; rewrites `fixtures/demo-sets/*` (placeholder videos, recorded ASR and model answers) | 0 |
 
-State is one JSON file, `out/demo/state.json` or `$DEMO_STATE`. Requests are handled one at a time; each reads it at the start and writes it atomically after a change, so overlapping requests do not lose writes. `bun run demo-reset` returns the demo to the start.
+State is one JSON file, `out/demo/state.json` or `$DEMO_STATE`. The file is capped at 2 MB (`STATE_MAX`): a change that would grow it past that gets 409 with a Russian hint to delete stories or run `demo-reset`; reads and deletes always work. Requests are handled one at a time; each reads it at the start and writes it atomically after a change, so overlapping requests do not lose writes. `bun run demo-reset` returns the demo to the start.
 
 ## What is where
 

@@ -3,6 +3,8 @@ import type { Place } from '../../core/source.ts';
 import type { DraftView, StoryView } from './api.ts';
 import { clock, span } from './shell.tsx';
 
+// the clock shows seconds: four steps a second keep it smooth without re-drawing the panel ten times a second
+const PLAYER_TICK_MS = 250;
 export type Sel = { place: Place; rowId: string; nonce: number };
 const INSTRUCTION = 'В исходнике есть указание. Сервис его не выполнял';
 const reduced = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -54,11 +56,11 @@ export function SourcePane(p: Props) {
     if (!player.playing) return;
     const i = setInterval(() => {
       setPlayer((s) => {
-        const next = s.t + 100;
+        const next = s.t + PLAYER_TICK_MS;
         const stop = s.end > 0 ? s.end : duration;
         return next >= stop ? { ...s, t: stop, playing: false } : { ...s, t: next };
       });
-    }, 100);
+    }, PLAYER_TICK_MS);
     return () => clearInterval(i);
   }, [player.playing, duration]);
 

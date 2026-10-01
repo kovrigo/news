@@ -11,6 +11,11 @@ const ok = (kind: Parameters<typeof parseDraft>[0], o: unknown) => parseDraft(ki
 
 describe('parseDraft', () => {
   test('valid voiceover', () => expect(ok('voiceover', voiceover)).toBe(true));
+  test('over-long strings from the model fail like typed text would', () => {
+    expect(ok('voiceover', { ...voiceover, sentences: [{ ...sentence, text: 'я'.repeat(301) }] })).toBe(false);
+    expect(ok('voiceover', { ...voiceover, sentences: [{ ...sentence, places: [{ surface: 'x', lemma: 'я'.repeat(121) }] }] })).toBe(false);
+    expect(ok('titles', { ...titles, items: [{ ...title, name: 'я'.repeat(121) }] })).toBe(false);
+  });
   test('valid leadin', () => expect(ok('leadin', { ...voiceover, kind: 'leadin' })).toBe(true));
   test('valid syncs with 3, 4 and 5 items', () => {
     for (const n of [3, 4, 5]) expect(ok('syncs', { ...syncs, items: Array(n).fill(item) })).toBe(true);

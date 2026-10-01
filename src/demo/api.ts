@@ -10,7 +10,8 @@ import { DemoError, KINDS, type Ctx, type Draft, type Kind, type State, type Sto
 import { journalView, listView, publicUser, storyView } from './domain/view.ts';
 import * as S from './schemas.ts';
 import { SETS, setById } from './sets.ts';
-import { BAD_STATE, loadState, NO_STATE, saveState, stateExists } from './state.ts';
+import { statSync } from 'node:fs';
+import { BAD_STATE, loadState, NO_STATE, saveState, STATE_FULL, STATE_MAX, stateExists } from './state.ts';
 import { BANNER, E } from './texts.ts';
 
 export type AppDeps = { statePath: string; now?: () => number };
@@ -78,6 +79,7 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
     {
       method: 'POST', re: /^\/api\/logout$/, auth: false,
       run: (c) => {
+        parse(S.empty, c.body);
         // a role switch must not leave this account's edit locks behind
         for (const s of c.user ? c.state.stories : []) for (const d of s.drafts) if (d.lock?.userId === c.user!.id) (releaseLock(ctxOf(c), d), (c.dirty = true));
         return json({ ok: true }, 200, { 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0` });
@@ -110,6 +112,7 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
     {
       method: 'DELETE', re: /^\/api\/stories\/([\w-]+)$/, auth: true,
       run: (c) => {
+        parse(S.empty, c.body);
         deleteStory(c.state, ctxOf(c), findStory(c.state, c.params[0]!));
         c.dirty = true;
         return json({ ok: true });
@@ -193,17 +196,17 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
         const num = (k: string): number | undefined => (q.get(k) && Number.isFinite(Number(q.get(k))) ? Number(q.get(k)) : undefined);
         return json(journalView(c.state, {
           story: q.get('story') || undefined, user: q.get('user') || undefined, action: q.get('action') || undefined,
-          from: num('from'), to: num('to'), taken: q.get('taken') === '1',
+          from: num('from'), to: num('to'), taken: q.get('taken') === '1', limit: num('limit'),
         }));
       },
     },
     { method: 'GET', re: /^\/api\/directory$/, auth: true, run: (c) => json({ ...c.state.directory, canEdit: canEditDirectory(ctxOf(c)) }) },
     { method: 'POST', re: /^\/api\/directory\/people$/, auth: true, run: (c) => (savePerson(c.state, ctxOf(c), null, parse(S.person, c.body)), (c.dirty = true), json(c.state.directory, 201)) },
     { method: 'PUT', re: /^\/api\/directory\/people\/([\w-]+)$/, auth: true, run: (c) => (savePerson(c.state, ctxOf(c), c.params[0]!, parse(S.person, c.body)), (c.dirty = true), json(c.state.directory)) },
-    { method: 'DELETE', re: /^\/api\/directory\/people\/([\w-]+)$/, auth: true, run: (c) => (deletePerson(c.state, ctxOf(c), c.params[0]!), (c.dirty = true), json(c.state.directory)) },
+    { method: 'DELETE', re: /^\/api\/directory\/people\/([\w-]+)$/, auth: true, run: (c) => (parse(S.empty, c.body), deletePerson(c.state, ctxOf(c), c.params[0]!), (c.dirty = true), json(c.state.directory)) },
     { method: 'POST', re: /^\/api\/directory\/places$/, auth: true, run: (c) => (savePlace(c.state, ctxOf(c), null, parse(S.place, c.body)), (c.dirty = true), json(c.state.directory, 201)) },
     { method: 'PUT', re: /^\/api\/directory\/places\/([\w-]+)$/, auth: true, run: (c) => (savePlace(c.state, ctxOf(c), c.params[0]!, parse(S.place, c.body)), (c.dirty = true), json(c.state.directory)) },
-    { method: 'DELETE', re: /^\/api\/directory\/places\/([\w-]+)$/, auth: true, run: (c) => (deletePlace(c.state, ctxOf(c), c.params[0]!), (c.dirty = true), json(c.state.directory)) },
+    { method: 'DELETE', re: /^\/api\/directory\/places\/([\w-]+)$/, auth: true, run: (c) => (parse(S.empty, c.body), deletePlace(c.state, ctxOf(c), c.params[0]!), (c.dirty = true), json(c.state.directory)) },
     {
       method: 'GET', re: /^\/api\/staff$/, auth: true,
       run: (c) => (c.user!.role !== 'chief' ? fail(403, E.forbidden) : json({ staff: c.state.users.map(publicUser) })),
@@ -222,6 +225,9 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
     const url = new URL(req.url);
     // only this machine's own address: a page elsewhere that points its name at 127.0.0.1 gets nothing
     if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return fail(403, E.forbidden);
+    // a change comes only from the demo's own page
+    const origin = req.headers.get('origin');
+    if (req.method !== 'GET' && origin !== null && origin !== url.origin) return fail(403, E.forbidden);
     const route = routes.find((r) => r.method === req.method && r.re.test(url.pathname));
     if (!route) return fail(404, E.noAddress);
     let body: unknown = {};
@@ -235,7 +241,9 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
     }
     if (!stateExists(deps.statePath)) return fail(503, NO_STATE);
     let state: State;
+    let loadedSize: number;
     try {
+      loadedSize = statSync(deps.statePath).size;
       state = loadState(deps.statePath);
     } catch {
       return fail(503, BAD_STATE);
@@ -260,6 +268,11 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
     if (route.auth && !c.user) return fail(401, E.needLogin);
     try {
       const res = await route.run(c);
+      // a change may not grow the file past the limit; reading and shrinking it always work
+      if (c.dirty && req.method !== 'GET') {
+        const size = Buffer.byteLength(JSON.stringify(c.state));
+        if (size > STATE_MAX && size > loadedSize) return fail(409, STATE_FULL);
+      }
       if (c.dirty) saveState(deps.statePath, c.state);
       return res;
     } catch (e) {

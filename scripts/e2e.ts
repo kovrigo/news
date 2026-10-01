@@ -36,8 +36,10 @@ const banner = async (page: Page): Promise<void> => {
   const t = await page.locator('.demo-banner [role="note"]').first().textContent({ timeout: 3000 });
   check(t?.trim() === BANNER, `banner missing or wrong on ${page.url()}`);
 };
+const opened: Page[] = [];
 async function newPage(w: number, h: number): Promise<Page> {
   const page = await context.newPage();
+  opened.push(page);
   await page.setViewportSize({ width: w, height: h });
   page.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text().slice(0, 200)));
   page.on('pageerror', (e) => {
@@ -47,8 +49,10 @@ async function newPage(w: number, h: number): Promise<Page> {
 }
 async function login(page: Page, name: string): Promise<void> {
   await page.goto(base!);
+  // wait for the app to finish loading: an instant check while the session still loads takes a logged-in page for the login page
   const out = page.getByRole('button', { name: 'Сменить роль' });
-  if (await out.isVisible().catch(() => false)) await out.click();
+  await out.or(page.getByRole('button', { name: new RegExp(name) })).first().waitFor({ state: 'visible', timeout: 15000 });
+  if (await out.isVisible()) await out.click();
   await page.getByRole('button', { name: new RegExp(name) }).click();
   await visible(page, 'header.top .profile', 'top bar');
   await banner(page);
@@ -256,7 +260,7 @@ scenario('offline: band, approve disabled, back online', async () => {
   await page.close();
 });
 
-scenario('offline draft: kept on reload, gone after demo-reset', async () => {
+scenario('offline draft: kept for the next visit, gone after demo-reset', async () => {
   const unsent = (p: Page): Promise<string[]> => p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('unsent:')));
   const page = await newPage(1280, 800);
   await login(page, 'Ольга Демина');
@@ -264,19 +268,25 @@ scenario('offline draft: kept on reload, gone after demo-reset', async () => {
   await page.getByRole('button', { name: 'Править черновик' }).click();
   const ta = page.locator('textarea[data-edit^="s:"]').first();
   await ta.waitFor({ state: 'visible', timeout: 5000 });
-  await context.setOffline(true);
-  try {
-    await ta.fill('Офлайн-правка, которую сброс должен убрать.');
-    await page.waitForFunction(() => Object.keys(localStorage).some((k) => k.startsWith('unsent:')), null, { timeout: 8000 });
-  } finally {
-    await page.close();
-    await context.setOffline(false);
-  }
+  // only this page goes offline, so a second page can open while the first still holds its draft
+  const cdpPage = await context.newCDPSession(page);
+  await cdpPage.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  await ta.fill('Офлайн-правка, которую сброс должен убрать.');
+  await visible(page, 'text=Не сохранено: нет связи', 'offline save status', 8000);
+  // A key seen inside the page is not yet in the browser's shared storage: Chromium hands it over a moment later,
+  // and closing the page at once can drop it. Open the second page first and wait until it sees the draft.
   const again = await newPage(1280, 800);
   await again.goto(base!);
   await visible(again, 'h1:has-text("Сюжеты")', 'list after reopening');
+  await again.waitForFunction(() => Object.keys(localStorage).some((k) => k.startsWith('unsent:')), null, { timeout: 5000 }).catch(() => undefined);
   const kept = await unsent(again);
   check(kept.length === 1, `offline draft kept when reopened without a reset: ${JSON.stringify(kept)}`);
+  // text typed just before the tab closes, before the autosave, is kept too
+  await page.locator('textarea[data-edit^="s:"]').nth(1).fill('Вторая правка перед самым закрытием.');
+  await page.close();
+  const items = (): Promise<number> => again.evaluate(() => Object.entries(localStorage).filter(([k]) => k.startsWith('unsent:')).reduce((n, [, v]) => n + JSON.parse(v).items.length, 0));
+  await again.waitForFunction(() => Object.entries(localStorage).some(([k, v]) => k.startsWith('unsent:') && JSON.parse(v).items.length === 2), null, { timeout: 5000 }).catch(() => undefined);
+  check((await items()) === 2, `text typed right before closing kept: ${await items()} edits stored`);
   await again.close();
   run(['bun', 'run', 'demo-reset']);
   const after = await newPage(1280, 800);
@@ -330,6 +340,9 @@ for (const [name, fn] of scenarios) {
   } catch (e) {
     failed++;
     console.log(`FAIL ${name}: ${(e as Error).message.split('\n').slice(0, 4).join(' | ')}`);
+  } finally {
+    // a failed scenario must not leave a page behind that keeps polling and reacts to the next one
+    for (const p of opened.splice(0)) if (!p.isClosed()) await p.close();
   }
 }
 await browser.close();

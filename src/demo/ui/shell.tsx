@@ -1,37 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { BANNER, NEWSROOM, TIME_ZONE } from '../texts.ts';
 import { api, onConnection, type Account, type ApiError } from './api.ts';
 
-export const BANNER = 'Демо на придуманных данных. Не загружайте и не вставляйте настоящие материалы.';
-export const NEWSROOM = 'Демо-редакция „Заречье-ТВ“';
-export const TIME_ZONE = 'Europe/Moscow';
+// one home for texts and formats: the server modules, which import only types
+export { plural } from '../texts.ts';
+export { fmtDate, fmtDateTime, fmtTime, fmtClock as clock, fmtSpan as span } from '../format.ts';
 
 type Store = { user: Account | null; online: boolean; announce: (text: string) => void; logout: () => Promise<void> };
 export const StoreCtx = createContext<Store>(null as never);
 export const useStore = (): Store => useContext(StoreCtx);
 
-const tz = { timeZone: TIME_ZONE };
-const fDate = new Intl.DateTimeFormat('ru-RU', { ...tz, day: 'numeric', month: 'long', year: 'numeric' });
-const fTime = new Intl.DateTimeFormat('ru-RU', { ...tz, hour: '2-digit', minute: '2-digit', hour12: false });
-export const fmtDate = (ms: number): string => fDate.format(ms).replace(/\s*г\.$/, '');
-export const fmtTime = (ms: number): string => fTime.format(ms);
-export const fmtDateTime = (ms: number): string => `${fmtDate(ms)}, ${fmtTime(ms)}`;
-const p2 = (n: number): string => String(n).padStart(2, '0');
-export function clock(ms: number, long = false): string {
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
-  return h > 0 || long ? `${p2(h)}:${p2(Math.floor((s % 3600) / 60))}:${p2(s % 60)}` : `${p2(Math.floor(s / 60))}:${p2(s % 60)}`;
-}
-export const span = (a: number, b: number, long = false): string => `${clock(a, long)}–${clock(b, long)}`;
 export function duration(ms: number): string {
   const m = Math.max(0, Math.round(ms / 60000));
   return m >= 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m} мин`;
 }
-export function plural(n: number, one: string, few: string, many: string): string {
-  const a = n % 100;
-  const b = n % 10;
-  return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many;
-}
-
 export function useHash(): string {
   const [h, setH] = useState(() => location.hash.slice(1) || '/');
   useEffect(() => {
@@ -47,27 +29,36 @@ export function usePoll<T>(path: string | null, every: number): { data: T | null
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const gen = useRef(0); // an answer for a path that is no longer shown is dropped
+  const last = useRef(''); // an unchanged answer does not re-render the page
   const reload = useCallback(async () => {
     if (!path) return;
     const g = gen.current;
     try {
       const v = await api<T>('GET', path);
       if (g !== gen.current) return;
-      setData(v);
       setError(null);
+      const text = JSON.stringify(v);
+      if (text === last.current) return;
+      last.current = text;
+      setData(v);
     } catch (e) {
       setError((e as Error).message);
-      if ((e as ApiError).status === 404) setData(null); // the story was deleted
+      if ((e as ApiError).status === 404) (setData(null), (last.current = '')); // the story was deleted
     }
   }, [path]);
   useEffect(() => {
     gen.current++;
+    last.current = '';
     setData(null);
     void reload();
     const t = setInterval(() => void reload(), every);
     return () => clearInterval(t);
   }, [reload, every]);
-  return { data, error, reload, set: setData };
+  const set = useCallback((v: T) => {
+    last.current = '';
+    setData(v);
+  }, []);
+  return { data, error, reload, set };
 }
 
 export function Modal(p: { title: string; onClose: () => void; children: ReactNode }) {

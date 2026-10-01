@@ -53,7 +53,7 @@ function fromResult(kind: Kind, res: DraftResult | undefined, story: Story, stat
     out.syncs = (d as SyncsDraft).items.flatMap((it, i) => {
       const a = material.segments.find((s) => s.id === it.fromRef);
       const b = material.segments.find((s) => s.id === it.toRef);
-      if (!a || !b || a.videoId !== b.videoId) return [];
+      if (!a || !b || a.videoId !== b.videoId) return []; // not reached: runStory refuses such answers
       return [{ id: `y${i + 1}`, videoId: a.videoId, startMs: Math.min(a.startMs, b.startMs), endMs: Math.max(a.endMs, b.endMs), note: it.note }];
     });
   } else {

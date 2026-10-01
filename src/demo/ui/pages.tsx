@@ -155,19 +155,22 @@ export function NewStory() {
 
 type JournalData = {
   rows: { id: number; at: number; userName: string; action: string; actionLabel: string; draft: string; storyTitle: string; storyDeleted: boolean; detail: string; factText: string }[];
+  total: number;
   stories: { id: string; title: string }[];
   users: { id: string; name: string }[];
   actions: { id: string; label: string }[];
 };
+const JOURNAL_STEP = 500;
 const PERIODS: Record<string, string> = { all: 'За всё время', day: 'За сутки', week: 'За 7 дней' };
 
 export function Journal() {
-  const [f, setF] = useState({ story: '', user: '', action: '', period: 'all', from: 0, taken: false });
+  const [f, setF] = useState({ story: '', user: '', action: '', period: 'all', from: 0, taken: false, limit: JOURNAL_STEP });
   const q = new URLSearchParams();
   if (f.story) q.set('story', f.story);
   if (f.user) q.set('user', f.user);
   if (f.action) q.set('action', f.action);
   if (f.taken) q.set('taken', '1');
+  if (f.limit > JOURNAL_STEP) q.set('limit', String(f.limit));
   // the period start is fixed when it is chosen: a fresh Date.now() on every render would change the poll path and refetch without end
   if (f.period !== 'all') q.set('from', String(f.from));
   const path = `/api/journal?${q}`;
@@ -240,6 +243,12 @@ export function Journal() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {data.total > data.rows.length && (
+        <div className="form-row">
+          <p className="note">Показаны последние {data.rows.length} из {data.total} {plural(data.total, 'записи', 'записей', 'записей')}</p>
+          <button type="button" className="btn" onClick={() => setF({ ...f, limit: f.limit + JOURNAL_STEP })}>Показать ещё {Math.min(JOURNAL_STEP, data.total - data.rows.length)}</button>
         </div>
       )}
     </main>

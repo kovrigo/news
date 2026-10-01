@@ -338,21 +338,24 @@ export function listView(state: State, ctx: Ctx): ListView {
   };
 }
 
-export type JournalQuery = { story?: string; user?: string; action?: string; from?: number; to?: number; taken?: boolean };
+export const JOURNAL_PAGE = 500;
+export type JournalQuery = { story?: string; user?: string; action?: string; from?: number; to?: number; taken?: boolean; limit?: number };
 export function journalView(state: State, q: JournalQuery): {
   rows: { id: number; at: number; userName: string; action: string; actionLabel: string; draft: string; storyTitle: string; storyDeleted: boolean; detail: string; factText: string }[];
+  total: number;
   stories: { id: string; title: string }[];
   users: { id: string; name: string }[];
   actions: { id: string; label: string }[];
 } {
-  const rows = state.journal
+  const found = state.journal
     .filter((r: JournalRow) => !q.story || r.storyId === q.story)
     .filter((r) => !q.user || r.userId === q.user)
     .filter((r) => !q.action || r.action === q.action)
     .filter((r) => (q.from === undefined || r.at >= q.from) && (q.to === undefined || r.at <= q.to))
     .filter((r) => !q.taken || r.action === 'take_over')
-    .sort((a, b) => b.at - a.at || b.id - a.id)
-    .slice(0, 500);
+    .sort((a, b) => b.at - a.at || b.id - a.id);
+  // newest first, a page at a time; the page says how many there are in all
+  const rows = found.slice(0, Math.max(JOURNAL_PAGE, Math.floor(q.limit ?? JOURNAL_PAGE)));
   const seen = new Map<string, string>();
   for (const r of state.journal) if (r.storyId) seen.set(r.storyId, r.storyTitle);
   return {
@@ -361,6 +364,7 @@ export function journalView(state: State, q: JournalQuery): {
       draft: r.draft ? DRAFT_NAMES[r.draft] : '', storyTitle: r.storyTitle, storyDeleted: !!r.storyDeleted, detail: r.detail ?? '',
       factText: r.storyDeleted && r.action === 'take_over' ? STORY_DELETED : (r.factText ?? ''),
     })),
+    total: found.length,
     stories: [...seen].map(([id, title]) => ({ id, title })),
     users: state.users.map((u) => ({ id: u.id, name: u.name })),
     actions: Object.entries(ACTION_LABELS).map(([id, label]) => ({ id, label })),

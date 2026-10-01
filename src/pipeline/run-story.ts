@@ -71,9 +71,16 @@ export async function runStory(dir: string, adapters: { asr: Asr; model: DraftMo
       costRub += out.costRub;
       raws.push(out.raw);
       const parsed = parseDraft(kind, out.raw);
-      if (parsed.ok) return check(kind, parsed.draft, raws);
+      if (parsed.ok && syncRefsValid(parsed.draft)) return check(kind, parsed.draft, raws);
     }
     return fail(kind, 'malformed_output', raws);
+  };
+
+  // a sync must run between two pieces of one video; anything else is an answer in the wrong form, never a silently shorter draft
+  const syncRefsValid = (draft: Draft): boolean => {
+    if (draft.kind !== 'syncs') return true;
+    const video = (ref: string): string | undefined => material.segments.find((s) => s.id === ref)?.videoId;
+    return draft.items.every((it) => video(it.fromRef) !== undefined && video(it.fromRef) === video(it.toRef));
   };
 
   const check = (kind: DraftKind, draft: Draft, raws: string[]): DraftResult => {

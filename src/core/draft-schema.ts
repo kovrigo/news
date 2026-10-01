@@ -1,33 +1,37 @@
 import { z } from 'zod';
 import type { DraftKind } from '../adapters/llm/types.ts';
 
-const quoted = z.strictObject({ ref: z.string(), quote: z.string() }).nullable();
+// Lengths are bounded like typed text: a sentence 300, a note 500, a name or place 120.
+const text = z.string().max(300);
+const short = z.string().max(120);
+const ref = z.string().max(32);
+const quoted = z.strictObject({ ref, quote: text }).nullable();
 const flags = z.array(
   z.strictObject({
     kind: z.enum(['conflict', 'insufficient', 'instruction_in_source']),
-    refs: z.array(z.string()),
-    note: z.string(),
+    refs: z.array(ref),
+    note: z.string().max(500),
   }),
 );
 const sentence = z
   .strictObject({
-    text: z.string(),
+    text,
     noFacts: z.boolean(),
-    facts: z.array(z.strictObject({ text: z.string(), source: quoted })),
-    places: z.array(z.strictObject({ surface: z.string(), lemma: z.string() })),
+    facts: z.array(z.strictObject({ text, source: quoted })),
+    places: z.array(z.strictObject({ surface: short, lemma: short })),
   })
   .refine((s) => s.noFacts || s.facts.length > 0, 'noFacts false needs at least one fact');
 
 const voiceover = z.strictObject({ kind: z.enum(['voiceover', 'leadin']), sentences: z.array(sentence), flags });
 const syncs = z.strictObject({
   kind: z.literal('syncs'),
-  items: z.array(z.strictObject({ fromRef: z.string(), toRef: z.string(), note: z.string() })).min(3).max(5),
+  items: z.array(z.strictObject({ fromRef: ref, toRef: ref, note: z.string().max(500) })).min(3).max(5),
   flags,
 });
 const titles = z.strictObject({
   kind: z.literal('titles'),
   items: z.array(
-    z.strictObject({ speaker: z.number().int(), videoId: z.string(), name: z.string(), position: z.string(), source: quoted }),
+    z.strictObject({ speaker: z.number().int(), videoId: ref, name: short, position: short, source: quoted }),
   ),
   flags,
 });

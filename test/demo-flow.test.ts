@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { saveState } from '../src/demo/state.ts';
 import { ANNA, OLGA, PAVEL, draftOf, env, key } from './demo-helpers.ts';
 
 const base = (s: { id: string }, kind: string): string => `/api/stories/${s.id}/drafts/${kind}`;
@@ -72,6 +73,44 @@ describe('approval, versions, keys', () => {
     const r2 = await e.call(OLGA, 'POST', `${base(s, 'syncs')}/submit`, {});
     expect(r2.json.drafts[1].state).toBe('review');
     expect(r2.json.drafts[1].returned).toBeUndefined();
+  });
+});
+
+describe('a check that does not finish', () => {
+  test('a sentence over 40 words fails its first check with "Не удалось проверить"; a recheck then finishes', async () => {
+    const e = await env();
+    const s = e.story('спортзала');
+    const vo = draftOf(s, 'voiceover');
+    const p = base(s, 'voiceover');
+    const sid = vo.sentences[0]!.id;
+    await e.call(OLGA, 'POST', `${p}/lock`, {});
+    const long = Array(41).fill('дом').join(' ') + '.';
+    expect((await e.call(OLGA, 'POST', `${p}/edit`, { baseVersion: vo.version, op: { op: 'setText', sentenceId: sid, text: long } })).status).toBe(200);
+    expect((await e.call(OLGA, 'POST', `${p}/recheck`, { sentenceId: sid })).status).toBe(400);
+    e.advance(2000);
+    await e.call(OLGA, 'GET', `/api/stories/${s.id}`);
+    expect(draftOf(e.story('спортзала'), 'voiceover').sentences[0]!.checkFailed).toBe(true);
+    expect((await e.call(OLGA, 'POST', `${p}/recheck`, { sentenceId: sid })).status).toBe(200);
+    e.advance(2000);
+    await e.call(OLGA, 'GET', `/api/stories/${s.id}`);
+    const after = draftOf(e.story('спортзала'), 'voiceover').sentences[0]!;
+    expect([after.checkFailed, after.checkingUntil]).toEqual([false, undefined]);
+  });
+});
+
+describe('decisions on marks', () => {
+  test('the chief cannot take a fact on themselves; a wrong action, an undo without a decision and any decision on an approved draft are refused', async () => {
+    const e = await env();
+    const s = e.story('спортзала');
+    const marks = (await e.call(OLGA, 'GET', `/api/stories/${s.id}`)).json.drafts[3].marks as { key: string; kind: string; actions: string[] }[];
+    const nosrc = marks.find((m) => m.kind === 'no_source')!;
+    const p = `${base(s, 'voiceover')}/decide`;
+    expect((await e.call(ANNA, 'POST', p, { markKey: nosrc.key, action: 'take', reason: 'знаю' })).status).toBe(403);
+    expect((await e.call(OLGA, 'POST', p, { markKey: nosrc.key, action: 'pick' })).status).toBe(400);
+    expect((await e.call(OLGA, 'POST', p, { markKey: nosrc.key, action: 'undo' })).status).toBe(400);
+    const r = e.story('Старого моста');
+    const rm = (await e.call(PAVEL, 'GET', `/api/stories/${r.id}`)).json.drafts.find((d: { kind: string }) => d.kind === 'transcript').marks as { key: string }[];
+    expect((await e.call(PAVEL, 'POST', `${base(r, 'transcript')}/decide`, { markKey: rm[0]!.key, action: 'undo' })).status).toBe(409);
   });
 });
 
@@ -330,6 +369,20 @@ describe('roles', () => {
     expect((await rows(`from=${r0.at + 1}`)).length).toBe(all.filter((r) => r.at > r0.at).length);
     expect((await rows(`to=${r0.at - 1}`)).length).toBe(all.filter((r) => r.at < r0.at).length);
     expect(await rows('from=abc')).toHaveLength(all.length);
+  });
+
+  test('a long journal says how many rows it shows and gives the older ones page by page', async () => {
+    const e = await env();
+    const st = e.state();
+    const row = st.journal[0]!;
+    for (let i = 0; i < 700; i++) st.journal.push({ ...row, id: 10_000 + i, at: row.at - i - 1 });
+    saveState(e.path, st);
+    const all = st.journal.length;
+    const first = (await e.call(ANNA, 'GET', '/api/journal')).json;
+    expect([first.rows.length, first.total]).toEqual([500, all]);
+    const more = (await e.call(ANNA, 'GET', '/api/journal?limit=1000')).json;
+    expect([more.rows.length, more.total]).toEqual([all, all]);
+    expect((await e.call(ANNA, 'GET', '/api/journal?limit=1')).json.rows).toHaveLength(500);
   });
 
   test('the chief grants and removes the right to approve and cannot disable themselves', async () => {
