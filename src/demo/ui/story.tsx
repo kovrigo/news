@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as KEvent, type MouseEvent as MEvent, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as KEvent, type MouseEvent as MEvent, type ReactNode } from 'react';
 import type { Place } from '../../core/source.ts';
 import type { Mark } from '../domain/marks.ts';
 import type { FactView, SegmentView, SentenceView, SyncView, TitleView } from '../domain/view.ts';
@@ -318,6 +318,20 @@ function DraftPane(p: PaneProps) {
   const approveKey = useMemo(() => crypto.randomUUID(), [d.kind, d.version, d.state]);
   const exportKey = useRef(crypto.randomUUID());
   const focusAfter = useRef<string | null>(null);
+  // a field in the sheet grows with its text: a long sentence reads whole, without scrolling inside the field
+  const sheetRef = useRef<HTMLElement>(null);
+  const fitFields = useCallback(() => {
+    for (const t of sheetRef.current?.querySelectorAll('textarea') ?? []) {
+      t.style.height = 'auto';
+      t.style.height = `${t.scrollHeight + t.offsetHeight - t.clientHeight}px`;
+    }
+  }, []);
+  useLayoutEffect(fitFields);
+  useEffect(() => {
+    addEventListener('resize', fitFields);
+    return () => removeEventListener('resize', fitFields);
+  }, [fitFields]);
+
 
   // an edited sentence is being checked: look again when the check is due
   const checking = d.sentences.some((x) => x.checking);
@@ -643,7 +657,7 @@ function DraftPane(p: PaneProps) {
       )}
 
       {d.state !== 'failed' && d.state !== 'preparing' && (
-      <article className="sheet">
+      <article className="sheet" ref={sheetRef}>
         <header className="sheet-head">
           <div>
             <h2>{d.name}</h2>
