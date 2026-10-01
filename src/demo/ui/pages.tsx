@@ -31,6 +31,9 @@ export function Login(p: { accounts: Account[]; onLogin: (u: Account) => void })
   );
 }
 
+// a page the server refuses says why instead of loading without end
+const Waiting = (p: { error: string | null }) => <main className="page">{p.error ? <p className="field-error" role="alert">{p.error}</p> : <p>Загрузка…</p>}</main>;
+
 const dayTitle = (ms: number, now: number): string => (fmtDate(ms) === fmtDate(now) ? `Сегодня, ${fmtDate(ms)}` : fmtDate(ms));
 
 export function List() {
@@ -174,7 +177,7 @@ export function Journal() {
   // the period start is fixed when it is chosen: a fresh Date.now() on every render would change the poll path and refetch without end
   if (f.period !== 'all') q.set('from', String(f.from));
   const path = `/api/journal?${q}`;
-  const { data: fresh } = usePoll<JournalData>(path, 15_000);
+  const { data: fresh, error } = usePoll<JournalData>(path, 15_000);
   // while a new filter loads, the old rows stay: the filter bar keeps its focus
   const kept = useRef<JournalData | null>(null);
   if (fresh) kept.current = fresh;
@@ -190,7 +193,7 @@ export function Journal() {
     else if (top && last.current !== null && top.id !== last.current) setLive(`Новая запись журнала: ${top.userName}, ${top.actionLabel}`);
     last.current = top?.id ?? 0;
   }, [fresh]);
-  if (!data) return <main className="page"><p>Загрузка…</p></main>;
+  if (!data) return <Waiting error={error} />;
   const sel = (k: 'story' | 'user' | 'action', label: string, opts: { id: string; label: string }[]) => (
     <label className="stack">
       <span className="label">{label}</span>
@@ -256,10 +259,10 @@ export function Journal() {
 }
 
 export function Staff() {
-  const { data, reload } = usePoll<{ staff: Account[] }>('/api/staff', 15_000);
+  const { data, reload, error: refused } = usePoll<{ staff: Account[] }>('/api/staff', 15_000);
   const { user } = useStore();
   const [error, setError] = useState('');
-  if (!data || !user) return <main className="page"><p>Загрузка…</p></main>;
+  if (!data || !user) return <Waiting error={refused} />;
   const change = async (id: string, body: object): Promise<void> => {
     try {
       await api('POST', `/api/staff/${id}`, body);
