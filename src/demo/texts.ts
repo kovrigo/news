@@ -6,7 +6,7 @@ export const EXPORT_BANNER = 'ДЕМО — придуманные данные, 
 export const REAL_MODELS_REFUSED = (v: string): string => `Демо работает только на заглушках: MODELS=${v} не поддерживается`;
 export const NO_PORT = 'Не задан PORT. Запускайте демо командой `paneweb up`';
 
-export const NEWSROOM = 'Демо-редакция „Заречье-ТВ“';
+export const NEWSROOM = 'Демо-редакция «Заречье-ТВ»';
 export const TIME_ZONE = 'Europe/Moscow';
 
 export const ROLE_LABELS: Record<Role, string> = {

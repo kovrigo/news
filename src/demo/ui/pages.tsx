@@ -14,7 +14,7 @@ export function Login(p: { accounts: Account[]; onLogin: (u: Account) => void })
   };
   return (
     <main className="login">
-      <h1>Демо-редакция „Заречье-ТВ“</h1>
+      <h1>Демо-редакция «Заречье-ТВ»</h1>
       <p>Выберите демо-учётную запись. Пароля нет: вход нужен, чтобы показать, что видит каждая роль.</p>
       <ul className="stack" aria-label="Демо-учётные записи">
         {p.accounts.map((u) => (
