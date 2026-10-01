@@ -275,7 +275,8 @@ scenario('offline draft: kept on reload, gone after demo-reset', async () => {
   const again = await newPage(1280, 800);
   await again.goto(base!);
   await visible(again, 'h1:has-text("Сюжеты")', 'list after reopening');
-  check((await unsent(again)).length === 1, 'offline draft kept when reopened without a reset');
+  const kept = await unsent(again);
+  check(kept.length === 1, `offline draft kept when reopened without a reset: ${JSON.stringify(kept)}`);
   await again.close();
   run(['bun', 'run', 'demo-reset']);
   const after = await newPage(1280, 800);
@@ -294,6 +295,11 @@ scenario('1280: chief reads the journal and the staff page, deletes a story', as
   await banner(page);
   await page.getByLabel('Взяли на себя без исходника').check();
   await visible(page, 'td:has-text("Дорога по объезду")', 'taken fact in the journal');
+  let journalCalls = 0;
+  page.on('request', (r) => void (r.url().includes('/api/journal') && journalCalls++));
+  await page.getByLabel('Период').selectOption('week');
+  await page.waitForTimeout(2000);
+  check(journalCalls <= 2, `a period filter refetches the journal without end: ${journalCalls} calls in 2 s`);
   await page.getByRole('link', { name: 'Сотрудники' }).click();
   await visible(page, 'h1:has-text("Сотрудники")', 'staff');
   await visible(page, 'td:has-text("Ольга Демина")', 'staff row');
@@ -327,4 +333,5 @@ for (const [name, fn] of scenarios) {
   }
 }
 await browser.close();
+run(['bun', 'run', 'demo-reset']); // the scenarios change the demo state: leave it as it starts
 process.exit(failed ? 1 : 0);

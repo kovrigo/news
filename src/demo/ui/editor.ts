@@ -4,7 +4,8 @@ import { api, ApiError, fireAndForget, type StoryView } from './api.ts';
 
 export type SaveState = { status: 'idle' | 'saving' | 'saved' | 'offline' | 'error'; at?: number; message?: string };
 type Unsent = { version: number; items: { op: EditOp; text: string }[] };
-const storeKey = (story: string, kind: string): string => `unsent:${story}:${kind}`;
+// per account: after «Сменить роль» another account must not send the previous one's edits
+const storeKey = (user: string, story: string, kind: string): string => `unsent:${user}:${story}:${kind}`;
 
 const readUnsent = (k: string): Unsent | null => {
   try {
@@ -24,6 +25,7 @@ const writeUnsent = (k: string, v: Unsent | null): void => {
 
 // After a demo-reset, offline drafts saved before it are dropped: the browser keeps the reset id it last saw.
 export function forgetUnsentAfterReset(resetId: string): void {
+  if (typeof resetId !== 'string') return; // a state file older than reset ids: keep the drafts
   try {
     if (localStorage.getItem('demo-reset-id') === resetId) return;
     for (const k of Object.keys(localStorage)) if (k.startsWith('unsent:')) localStorage.removeItem(k);
@@ -34,7 +36,7 @@ export function forgetUnsentAfterReset(resetId: string): void {
 }
 
 // Edit mode of one draft: the lock, the heartbeat, autosave 1.5 s after the last change, unsent text for offline.
-export function useEditor(a: { storyId: string; kind: string; version: number; online: boolean; apply: (v: StoryView) => void; lockedByMe: boolean }) {
+export function useEditor(a: { userId: string; storyId: string; kind: string; version: number; online: boolean; apply: (v: StoryView) => void; lockedByMe: boolean }) {
   const base = `/api/stories/${a.storyId}/drafts/${a.kind}`;
   const [editing, setEditing] = useState(false);
   const [save, setSave] = useState<SaveState>({ status: 'idle' });
@@ -64,7 +66,7 @@ export function useEditor(a: { storyId: string; kind: string; version: number; o
         } catch (e) {
           const err = e as ApiError;
           if (err.status === 0 || err.status === 401) {
-            const k = storeKey(a.storyId, a.kind);
+            const k = storeKey(a.userId, a.storyId, a.kind);
             const old = readUnsent(k) ?? { version: version.current, items: [] };
             writeUnsent(k, { version: old.version, items: [...old.items.filter((i) => JSON.stringify(i.op) !== JSON.stringify(op)), { op, text }] });
             setSave({ status: 'offline' });
@@ -148,7 +150,7 @@ export function useEditor(a: { storyId: string; kind: string; version: number; o
       Object.values(timers.current).forEach(clearTimeout);
       const left = Object.values(pending.current);
       if (left.length === 0) return;
-      const k = storeKey(a.storyId, a.kind);
+      const k = storeKey(a.userId, a.storyId, a.kind);
       const old = readUnsent(k) ?? { version: version.current, items: [] };
       writeUnsent(k, { version: old.version, items: [...old.items, ...left] });
     },
@@ -162,9 +164,9 @@ export function useEditor(a: { storyId: string; kind: string; version: number; o
   // back online: save what was kept if the draft did not change meanwhile; otherwise show it for manual transfer
   useEffect(() => {
     if (!a.online) return;
-    const k = storeKey(a.storyId, a.kind);
+    const k = storeKey(a.userId, a.storyId, a.kind);
     const un = readUnsent(k);
-    if (!un || un.items.length === 0) return;
+    if (!un || !Array.isArray(un.items) || un.items.length === 0) return;
     writeUnsent(k, null);
     if (un.version === lastVersionFromServer.current) {
       version.current = un.version;

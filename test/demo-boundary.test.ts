@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createApp } from '../src/demo/api.ts';
 import { refuseStart } from '../src/demo/boundary.ts';
-import { ANNA, OLGA, PAVEL, draftOf, env } from './demo-helpers.ts';
+import { buildSeed } from '../src/demo/seed.ts';
+import { ANNA, NOW, OLGA, PAVEL, draftOf, env } from './demo-helpers.ts';
 
 const files = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [join(dir, e.name)] : []));
@@ -37,7 +39,7 @@ describe('boundary 2: mock only', () => {
   test('no adapter module other than the mocks, no network client in src', () => {
     const adapters = files('src/adapters').map((f) => f.replace(/\\/g, '/'));
     expect(adapters.filter((f) => !/\/(mock|types|prompt)\.ts$/.test(f))).toEqual([]);
-    const bad = /from ['"](node:)?(http|https|http2|net|tls|dgram|dns)['"]|from ['"](axios|node-fetch|undici|ws|got|openai|@anthropic-ai\/[^'"]+)['"]|new WebSocket|XMLHttpRequest|EventSource|Bun\.connect/;
+    const bad = /from ['"](node:)?(http|https|http2|net|tls|dgram|dns)['"]|from ['"](axios|node-fetch|undici|ws|got|openai|@anthropic-ai\/[^'"]+)['"]|new WebSocket|XMLHttpRequest|EventSource|sendBeacon|Bun\.connect|Bun\.spawn|Bun\.\$|child_process/;
     for (const f of files('src')) {
       const text = readFileSync(f, 'utf8');
       expect([f, bad.test(text)]).toEqual([f, false]);
@@ -103,5 +105,69 @@ describe('boundary 4 and 5: accounts and banner', () => {
     expect(server).toContain("hostname: '127.0.0.1'");
     expect(server).toContain('Number(process.env.PORT)');
     expect(refuseStart({})).toBe('Не задан PORT. Запускайте демо командой `paneweb up`');
+  });
+});
+
+describe('boundary 6: the state file', () => {
+  test('overlapping requests do not lose writes', async () => {
+    const e = await env();
+    const before = e.state().directory.people.length;
+    const rs = await Promise.all(Array.from({ length: 20 }, (_, i) => e.call(PAVEL, 'POST', '/api/directory/people', { name: `Проба ${i}`, position: 'проба' })));
+    expect(rs.map((r) => r.status)).toEqual(Array(20).fill(201));
+    expect(e.state().directory.people.length - before).toBe(20);
+  });
+
+  test('every reset gets a new reset id, and the session gives it to the browser', async () => {
+    const e = await env();
+    expect((await e.call(null, 'GET', '/api/session')).json.resetId).toBe(e.state().resetId);
+    expect((await buildSeed(NOW)).resetId).not.toBe((await buildSeed(NOW)).resetId);
+  });
+
+  test('without the state file every call answers 503 with the reset command', async () => {
+    const e = await env();
+    rmSync(e.path);
+    const r = await e.call(OLGA, 'GET', '/api/session');
+    expect(r.status).toBe(503);
+    expect(r.json.error).toBe('Состояние демо не создано. Выполните: bun run demo-reset');
+  });
+
+  test('a damaged state file answers 503 with the reset command, not a crash', async () => {
+    const e = await env();
+    writeFileSync(e.path, '{');
+    const r = await e.call(OLGA, 'GET', '/api/session');
+    expect(r.status).toBe(503);
+    expect(r.json.error).toBe('Файл состояния демо повреждён. Выполните: bun run demo-reset');
+  });
+});
+
+describe('boundary 7: requests and typed text', () => {
+  test('only this machine\'s own host name is answered', async () => {
+    const e = await env();
+    const app = createApp({ statePath: e.path });
+    expect((await app.fetch(new Request('http://evil.example:3000/api/session'))).status).toBe(403);
+    expect((await app.fetch(new Request('http://localhost:3000/api/session'))).status).toBe(200);
+    expect(refuseStart({ PORT: 'abc' })).toBe('Не задан PORT. Запускайте демо командой `paneweb up`');
+    expect(readFileSync('src/demo/server.ts', 'utf8')).toContain('maxRequestBodySize: BODY_MAX');
+  });
+
+  test('a correspondent cannot delete from the directory, and the file stays as it was', async () => {
+    const e = await env();
+    const before = readFileSync(e.path, 'utf8');
+    const id = e.state().directory.people[0]!.id;
+    expect((await e.call(OLGA, 'DELETE', `/api/directory/people/${id}`)).status).toBe(403);
+    expect(readFileSync(e.path, 'utf8')).toBe(before);
+  });
+
+  test('control characters are dropped from typed text; an export names each draft once', async () => {
+    const e = await env();
+    const s = e.story('спортзала');
+    const d = draftOf(s, 'voiceover');
+    const p = `/api/stories/${s.id}/drafts/voiceover`;
+    await e.call(OLGA, 'POST', `${p}/lock`, {});
+    const r = await e.call(OLGA, 'POST', `${p}/edit`, { baseVersion: d.version, op: { op: 'setText', sentenceId: d.sentences[0]!.id, text: 'Спортзал\u0001 открыли\u0000.' } });
+    expect(r.status).toBe(200);
+    expect(draftOf(e.story('спортзала'), 'voiceover').sentences[0]!.text).toBe('Спортзал открыли.');
+    const x = await e.call(PAVEL, 'POST', `/api/stories/${s.id}/export`, { kinds: ['voiceover', 'voiceover'], format: 'txt', noHeader: false, clickKey: 'k-12345678' });
+    expect(x.status).toBe(400);
   });
 });

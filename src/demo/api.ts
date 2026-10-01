@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import { runSet } from './domain/build.ts';
 import { acquireLock, editOp, heartbeat, releaseLock, renameSpeaker } from './domain/edit.ts';
 import { exportDrafts } from './domain/export.ts';
-import { addToDirectory, approveDraft, decide, deleteStory, recheckSentence, retryDraft, returnDraft, setNotNeeded, startStory, submitDraft, syncDirectory } from './domain/flow.ts';
+import { addToDirectory, approveDraft, canEditDirectory, decide, deleteStory, recheckSentence, retryDraft, returnDraft, setNotNeeded, startStory, submitDraft, syncDirectory } from './domain/flow.ts';
 import { findStory } from './domain/journal.ts';
 import { deletePerson, deletePlace, savePerson, savePlace, updateStaff } from './domain/ops.ts';
 import { tick } from './domain/tick.ts';
@@ -10,7 +10,7 @@ import { DemoError, KINDS, type Ctx, type Draft, type Kind, type State, type Sto
 import { journalView, listView, publicUser, storyView } from './domain/view.ts';
 import * as S from './schemas.ts';
 import { SETS, setById } from './sets.ts';
-import { loadState, NO_STATE, saveState, stateExists } from './state.ts';
+import { BAD_STATE, loadState, NO_STATE, saveState, stateExists } from './state.ts';
 import { BANNER, E } from './texts.ts';
 
 export type AppDeps = { statePath: string; now?: () => number };
@@ -40,7 +40,11 @@ function parse<T extends z.ZodType>(schema: T, body: unknown): z.infer<T> {
 const COOKIE = 'demo_user';
 const cookieUser = (req: Request): string | null => {
   const m = /(?:^|;\s*)demo_user=([^;]+)/.exec(req.headers.get('cookie') ?? '');
-  return m ? decodeURIComponent(m[1]!) : null;
+  try {
+    return m ? decodeURIComponent(m[1]!) : null;
+  } catch {
+    return null; // a broken cookie is no login
+  }
 };
 
 export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Response> } {
@@ -71,7 +75,14 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
         return json({ user: publicUser(u) }, 200, { 'set-cookie': `${COOKIE}=${encodeURIComponent(u.id)}; Path=/; HttpOnly; SameSite=Strict` });
       },
     },
-    { method: 'POST', re: /^\/api\/logout$/, auth: false, run: () => json({ ok: true }, 200, { 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0` }) },
+    {
+      method: 'POST', re: /^\/api\/logout$/, auth: false,
+      run: (c) => {
+        // a role switch must not leave this account's edit locks behind
+        for (const s of c.user ? c.state.stories : []) for (const d of s.drafts) if (d.lock?.userId === c.user!.id) (releaseLock(ctxOf(c), d), (c.dirty = true));
+        return json({ ok: true }, 200, { 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0` });
+      },
+    },
     { method: 'GET', re: /^\/api\/sets$/, auth: true, run: () => json({ sets: SETS.map(({ id, title, description, videoNames, docNames }) => ({ id, title, description, videoNames, docNames })) }) },
     { method: 'GET', re: /^\/api\/stories$/, auth: true, run: (c) => json(listView(c.state, ctxOf(c))) },
     {
@@ -186,7 +197,7 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
         }));
       },
     },
-    { method: 'GET', re: /^\/api\/directory$/, auth: true, run: (c) => json({ ...c.state.directory, canEdit: c.user!.role !== 'correspondent' }) },
+    { method: 'GET', re: /^\/api\/directory$/, auth: true, run: (c) => json({ ...c.state.directory, canEdit: canEditDirectory(ctxOf(c)) }) },
     { method: 'POST', re: /^\/api\/directory\/people$/, auth: true, run: (c) => (savePerson(c.state, ctxOf(c), null, parse(S.person, c.body)), (c.dirty = true), json(c.state.directory, 201)) },
     { method: 'PUT', re: /^\/api\/directory\/people\/([\w-]+)$/, auth: true, run: (c) => (savePerson(c.state, ctxOf(c), c.params[0]!, parse(S.person, c.body)), (c.dirty = true), json(c.state.directory)) },
     { method: 'DELETE', re: /^\/api\/directory\/people\/([\w-]+)$/, auth: true, run: (c) => (deletePerson(c.state, ctxOf(c), c.params[0]!), (c.dirty = true), json(c.state.directory)) },
@@ -207,15 +218,14 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
     },
   ];
 
-  async function handle(req: Request): Promise<Response> {
+  async function handle(req: Request, text: string): Promise<Response> {
     const url = new URL(req.url);
+    // only this machine's own address: a page elsewhere that points its name at 127.0.0.1 gets nothing
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return fail(403, E.forbidden);
     const route = routes.find((r) => r.method === req.method && r.re.test(url.pathname));
     if (!route) return fail(404, E.noAddress);
     let body: unknown = {};
     if (req.method !== 'GET') {
-      const len = Number(req.headers.get('content-length') ?? 0);
-      if (len > S.BODY_MAX) return fail(400, E.bodyTooBig);
-      const text = await req.text();
       if (new TextEncoder().encode(text).length > S.BODY_MAX) return fail(400, E.bodyTooBig);
       try {
         body = text.trim() === '' ? {} : JSON.parse(text);
@@ -224,9 +234,15 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
       }
     }
     if (!stateExists(deps.statePath)) return fail(503, NO_STATE);
+    let state: State;
+    try {
+      state = loadState(deps.statePath);
+    } catch {
+      return fail(503, BAD_STATE);
+    }
     const c: Call = {
       req, url, body, params: route.re.exec(url.pathname)!.slice(1),
-      state: loadState(deps.statePath), now: clock(), user: null, dirty: false,
+      state, now: clock(), user: null, dirty: false,
       reload() {
         this.state = loadState(deps.statePath);
         this.now = clock();
@@ -256,5 +272,16 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
     }
   }
 
-  return { fetch: handle };
+  // One request at a time: each loads the state file, changes it and writes it back, so overlapping requests would lose writes.
+  let queue: Promise<unknown> = Promise.resolve();
+  return {
+    fetch: async (req) => {
+      // the body is read before the queue: a slow sender must not hold up everyone else
+      if (Number(req.headers.get('content-length') ?? 0) > S.BODY_MAX) return fail(400, E.bodyTooBig);
+      const text = req.method === 'GET' ? '' : await req.text();
+      const res = queue.then(() => handle(req, text));
+      queue = res.catch(() => undefined);
+      return res;
+    },
+  };
 }

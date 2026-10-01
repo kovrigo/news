@@ -52,7 +52,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
 .btn.small { padding: 4px 12px; min-height: 32px; }
-.btn[aria-disabled='true'], .btn:disabled { background: #DCE1E4; border-color: #DCE1E4; color: var(--muted); cursor: not-allowed; }
+.btn[aria-disabled='true'], .btn[aria-disabled='true']:hover, .btn:disabled, .btn:disabled:hover { background: #DCE1E4; border-color: #DCE1E4; color: var(--muted); cursor: not-allowed; }
 .btn.danger { border-color: var(--error); color: var(--error); }
 .btn.link { border: 0; background: none; padding: 4px 0; min-height: 32px; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
 .btn.link:hover { background: none; color: var(--primary-hover); }
@@ -67,7 +67,7 @@ input:hover, select:hover, textarea:hover { border-color: var(--muted); }
 .tag.error { background: var(--error-tint); color: var(--error); border-color: var(--error-tint); }
 .tag.check { background: var(--check); color: var(--text); border-color: var(--check); }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--muted); margin-right: 6px; vertical-align: 1px; }
-.dot.approved { background: var(--approved); } .dot.returned { background: var(--returned); } .dot.error { background: var(--error); } .dot.check { background: #7A5600; }
+.dot.approved { background: var(--approved); } .dot.returned { background: var(--returned); } .dot.error { background: var(--error); } .dot.check { background: var(--check-text); }
 
 /* pages */
 .page { width: 100%; max-width: 1040px; margin: 0 auto; padding: var(--xl) var(--lg) var(--xxl); display: flex; flex-direction: column; gap: var(--lg); }
@@ -193,6 +193,7 @@ td { padding: 8px 12px; border-top: 1px solid var(--rule); vertical-align: top; 
 .controls .btn { background: #18252C; color: #F5F6F6; border-color: #6A767C; min-height: 32px; padding: 4px 10px; }
 .controls .btn:hover { background: #29363D; }
 .controls input[type='range'] { flex: 1; min-width: 0; accent-color: #FFFFFF; }
+.controls :focus-visible { outline-color: #FFFFFF; }
 @media (max-width: 699px) {
   .controls { flex-wrap: wrap; }
   .controls input[type='range'] { order: 3; flex-basis: 100%; min-height: 44px; }

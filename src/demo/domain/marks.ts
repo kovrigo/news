@@ -14,16 +14,6 @@ export type Mark = {
   pending: boolean;
 };
 
-// Decision a user may record per action; "undo" removes it.
-export const DECISION_OF_ACTION: Record<string, string> = {
-  take: 'take',
-  confirm: 'confirm',
-  keep: 'keep',
-  checked: 'checked',
-  pick: 'pick',
-  accept: 'accept',
-};
-
 // Marks are derived from the draft, the transcript and the stored directory results; only decisions are stored.
 export function computeMarks(d: Draft, story: Story): Mark[] {
   const marks: Mark[] = [];

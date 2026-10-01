@@ -11,16 +11,22 @@ function App() {
   const [user, setUser] = useState<Account | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState('');
   const [live, setLive] = useState('');
   const online = useConnection();
   const hash = useHash();
 
   const refresh = useCallback(async () => {
-    const r = await api<{ user: Account | null; accounts: Account[]; resetId: string }>('GET', '/api/session');
-    forgetUnsentAfterReset(r.resetId);
-    setUser(r.user);
-    setAccounts(r.accounts);
-    setReady(true);
+    try {
+      const r = await api<{ user: Account | null; accounts: Account[]; resetId: string }>('GET', '/api/session');
+      forgetUnsentAfterReset(r.resetId);
+      setUser(r.user);
+      setAccounts(r.accounts);
+      setReady(true);
+      setFailed('');
+    } catch (e) {
+      setFailed((e as Error).message);
+    }
   }, []);
   useEffect(() => void refresh(), [refresh]);
   useEffect(() => {
@@ -51,7 +57,7 @@ function App() {
   return (
     <StoreCtx.Provider value={{ user, online, announce, logout }}>
       <Shell live={live} online={online}>
-        {!ready ? <p className="page">Загрузка…</p> : user ? page : <Login accounts={accounts} onLogin={(u) => { setUser(u); void refresh(); }} />}
+        {!ready ? <main className="page"><p role="status">{failed || 'Загрузка…'}</p></main> : user ? page : <Login accounts={accounts} onLogin={(u) => { setUser(u); void refresh(); }} />}
       </Shell>
     </StoreCtx.Provider>
   );

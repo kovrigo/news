@@ -162,22 +162,31 @@ type JournalData = {
 const PERIODS: Record<string, string> = { all: 'За всё время', day: 'За сутки', week: 'За 7 дней' };
 
 export function Journal() {
-  const [f, setF] = useState({ story: '', user: '', action: '', period: 'all', taken: false });
+  const [f, setF] = useState({ story: '', user: '', action: '', period: 'all', from: 0, taken: false });
   const q = new URLSearchParams();
   if (f.story) q.set('story', f.story);
   if (f.user) q.set('user', f.user);
   if (f.action) q.set('action', f.action);
   if (f.taken) q.set('taken', '1');
-  if (f.period !== 'all') q.set('from', String(Date.now() - (f.period === 'day' ? 1 : 7) * 86_400_000));
-  const { data } = usePoll<JournalData>(`/api/journal?${q}`, 15_000);
+  // the period start is fixed when it is chosen: a fresh Date.now() on every render would change the poll path and refetch without end
+  if (f.period !== 'all') q.set('from', String(f.from));
+  const path = `/api/journal?${q}`;
+  const { data: fresh } = usePoll<JournalData>(path, 15_000);
+  // while a new filter loads, the old rows stay: the filter bar keeps its focus
+  const kept = useRef<JournalData | null>(null);
+  if (fresh) kept.current = fresh;
+  const data = fresh ?? kept.current;
+  const shownPath = useRef(path);
   const [live, setLive] = useState('');
   const last = useRef<number | null>(null);
   useEffect(() => {
-    if (!data) return;
-    const top = data.rows[0];
-    if (top && last.current !== null && top.id !== last.current) setLive(`Новая запись журнала: ${top.userName}, ${top.actionLabel}`);
+    if (!fresh) return;
+    const top = fresh.rows[0];
+    // a new filter is not a new entry
+    if (shownPath.current !== path) shownPath.current = path;
+    else if (top && last.current !== null && top.id !== last.current) setLive(`Новая запись журнала: ${top.userName}, ${top.actionLabel}`);
     last.current = top?.id ?? 0;
-  }, [data]);
+  }, [fresh]);
   if (!data) return <main className="page"><p>Загрузка…</p></main>;
   const sel = (k: 'story' | 'user' | 'action', label: string, opts: { id: string; label: string }[]) => (
     <label className="stack">
@@ -197,7 +206,7 @@ export function Journal() {
         {sel('action', 'Действие', data.actions)}
         <label className="stack">
           <span className="label">Период</span>
-          <select value={f.period} onChange={(e) => setF({ ...f, period: e.target.value })}>
+          <select value={f.period} onChange={(e) => setF({ ...f, period: e.target.value, from: Date.now() - (e.target.value === 'day' ? 1 : 7) * 86_400_000 })}>
             {Object.entries(PERIODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </label>

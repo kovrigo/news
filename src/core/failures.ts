@@ -1,5 +1,5 @@
-// Single source of user-facing Russian texts.
-export const MOCK_UNKNOWN = 'Заглушка знает только демо-исходники. Включите настоящие модели';
+// User-facing Russian texts of the core: failures and source-link reasons.
+export const MOCK_UNKNOWN = 'Заглушка знает только демо-исходники';
 export const REAL_MODELS_MISSING = 'Настоящие модели ещё не подключены';
 
 export const DRAFT_FAILURES = {
@@ -23,9 +23,3 @@ export const SENTENCE_FLAGS = {
   unmarked_fact: 'Предложение без фактов содержит число или имя',
 } as const;
 export type SentenceFlag = keyof typeof SENTENCE_FLAGS;
-
-export const DRAFT_FLAGS = {
-  conflict: 'Источники противоречат друг другу',
-  insufficient: 'Исходников не хватает',
-  instruction_in_source: 'В исходнике есть указание для модели; оно не выполнено',
-} as const;

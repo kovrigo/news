@@ -45,7 +45,7 @@ export const approve = so({ version: z.number().int().min(0), clickKey: z.string
 export const returnDraft = so({ comment });
 export const notNeeded = so({ on: z.boolean() });
 export const exportBody = so({
-  kinds: z.array(z.enum(['transcript', 'syncs', 'titles', 'voiceover', 'leadin'])).min(1).max(5),
+  kinds: z.array(z.enum(['transcript', 'syncs', 'titles', 'voiceover', 'leadin'])).min(1).max(5).refine((k) => new Set(k).size === k.length),
   format: z.enum(['txt', 'docx']),
   noHeader: z.boolean(),
   clickKey: z.string().min(8).max(64),

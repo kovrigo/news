@@ -32,6 +32,7 @@ export function savePerson(state: State, ctx: Ctx, id: string | null, v: { name:
   touch(state, ctx, `${name} — ${position}`);
 }
 export function deletePerson(state: State, ctx: Ctx, id: string): void {
+  if (!canEditDirectory(ctx)) throw new DemoError(403, E.forbidden);
   const p = state.directory.people.find((x) => x.id === id);
   if (!p) throw new DemoError(400, E.noId);
   state.directory.people = state.directory.people.filter((x) => x !== p);
@@ -49,6 +50,7 @@ export function savePlace(state: State, ctx: Ctx, id: string | null, v: { name: 
   touch(state, ctx, name);
 }
 export function deletePlace(state: State, ctx: Ctx, id: string): void {
+  if (!canEditDirectory(ctx)) throw new DemoError(403, E.forbidden);
   const p = state.directory.places.find((x) => x.id === id);
   if (!p) throw new DemoError(400, E.noId);
   state.directory.places = state.directory.places.filter((x) => x !== p);

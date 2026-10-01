@@ -151,8 +151,8 @@ export function StoryPage(p: { id: string; kind?: string }) {
         </div>
       </div>
       {data.processing && (
-        <div className="band info" role="status" style={{ margin: '12px 24px 0' }}>
-          <b>{data.processing.label}</b>
+        <div className="band info" style={{ margin: '12px 24px 0' }}>
+          <b role="status">{data.processing.label}</b>
           <span>Прошло {Math.round(data.processing.elapsedMs / 1000)} с, осталось примерно {Math.max(1, Math.round(data.processing.remainingMs / 1000))} с. Со страницы можно уйти: обработка продолжится.</span>
         </div>
       )}
@@ -245,6 +245,8 @@ function ExportDialog(p: { story: StoryView; onClose: () => void; announce: (t: 
       p.onClose();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      clickKey.current = crypto.randomUUID(); // a double click shares the key; the next export gets its own journal row
     }
   };
   return (
@@ -300,9 +302,13 @@ type PaneProps = {
 function DraftPane(p: PaneProps) {
   const { story, draft: d, apply } = p;
   const { user, online, announce } = useStore();
-  const ed = useEditor({ storyId: story.id, kind: d.kind, version: d.version, online, apply, lockedByMe: !!d.lock?.mine });
+  const ed = useEditor({ userId: user!.id, storyId: story.id, kind: d.kind, version: d.version, online, apply, lockedByMe: !!d.lock?.mine });
   const base = `/api/stories/${story.id}/drafts/${d.kind}`;
   const [texts, setTexts] = useState<Record<string, string>>({});
+  // typed field text lives for one edit session; after it the server text shows again
+  useEffect(() => {
+    if (!ed.editing) setTexts({});
+  }, [ed.editing]);
   const [dlg, setDlg] = useState<null | { type: 'return' | 'take' | 'confirmEdit'; mark?: Mark }>(null);
   const [msg, setMsg] = useState('');
   const [noHeader, setNoHeader] = useState(false);
@@ -310,7 +316,7 @@ function DraftPane(p: PaneProps) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [nameVal, setNameVal] = useState('');
   const approveKey = useMemo(() => crypto.randomUUID(), [d.kind, d.version, d.state]);
-  const exportKey = useMemo(() => crypto.randomUUID(), [d.kind, d.version, d.state, d.exported]);
+  const exportKey = useRef(crypto.randomUUID());
   const focusAfter = useRef<string | null>(null);
 
   // an edited sentence is being checked: look again when the check is due
@@ -622,7 +628,7 @@ function DraftPane(p: PaneProps) {
           <div><button type="button" className="btn" onClick={() => void act('retry')}>Повторить</button></div>
         </div>
       )}
-      {d.state === 'preparing' && <div className="band info" role="status"><b>Готовится</b><span>{story.processing ? `${story.processing.label}. Осталось примерно ${Math.max(1, Math.round(story.processing.remainingMs / 1000))} с` : 'Черновик скоро откроется'}</span></div>}
+      {d.state === 'preparing' && <div className="band info"><b role="status">Готовится</b><span>{story.processing ? `${story.processing.label}. Осталось примерно ${Math.max(1, Math.round(story.processing.remainingMs / 1000))} с` : 'Черновик скоро откроется'}</span></div>}
       {d.state === 'not_built' && <div className="band check" role="note"><b>Не построен: мало материала</b><span>{d.notBuiltNote ? `Не хватает: ${d.notBuiltNote}.` : ''} Принять как есть, дописать вручную или отметить, что черновик не нужен.</span></div>}
       {unsent.length > 0 && (
         <div className="band returned" role="alert">
@@ -780,11 +786,13 @@ function DraftPane(p: PaneProps) {
 
   async function exportOne(format: 'docx' | 'txt'): Promise<void> {
     try {
-      const name = await download(`/api/stories/${story.id}/export`, { kinds: [d.kind], format, noHeader: format === 'txt' && d.kind === 'leadin' && noHeader, clickKey: exportKey });
+      const name = await download(`/api/stories/${story.id}/export`, { kinds: [d.kind], format, noHeader: format === 'txt' && d.kind === 'leadin' && noHeader, clickKey: exportKey.current });
       announce(`Файл выгружен: ${name}`);
       setMsg('');
     } catch (e) {
       setMsg((e as ApiError).message);
+    } finally {
+      exportKey.current = crypto.randomUUID();
     }
   }
 }

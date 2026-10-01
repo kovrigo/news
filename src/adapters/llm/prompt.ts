@@ -6,13 +6,14 @@ const clock = (ms: number): string => {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
 
-// videoId is "V<n>": the label shows the number n.
+// videoId is "V<n>": the label shows the number n. One line per piece: a line break inside source text cannot start a forged piece.
+const oneLine = (t: string): string => t.replace(/\s+/g, ' ');
 export function formatMaterial(material: Material): string {
   const lines = [
     ...material.segments.map(
-      (s) => `[${s.id} ${clock(s.startMs)}–${clock(s.endMs)} видео ${s.videoId.slice(1)}, Спикер ${s.speaker}] ${s.text}`,
+      (s) => `[${s.id} ${clock(s.startMs)}–${clock(s.endMs)} видео ${s.videoId.slice(1)}, Спикер ${s.speaker}] ${oneLine(s.text)}`,
     ),
-    ...material.paragraphs.map((p) => `[${p.id}] ${p.text}`),
+    ...material.paragraphs.map((p) => `[${p.id}] ${oneLine(p.text)}`),
   ];
   return lines.join('\n');
 }

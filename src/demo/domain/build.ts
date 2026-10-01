@@ -6,6 +6,7 @@ import { verifyFact, verifySentence } from '../../core/links.ts';
 import type { Material } from '../../core/source.ts';
 import { runStory, type DraftResult, type StoryResult } from '../../pipeline/run-story.ts';
 import type { SetInfo } from '../sets.ts';
+import { DRAFT_NAMES } from '../texts.ts';
 import { checkTitle, placeInDir } from './directory.ts';
 import { KINDS, type Draft, type Kind, type State, type Story, type Step } from './types.ts';
 
@@ -115,7 +116,7 @@ export function createStory(
     drafts: [],
     steps,
   };
-  for (const k of KINDS) if (k !== 'transcript') readyAt[k] = step(`Черновик: ${k === 'syncs' ? 'синхроны' : k === 'titles' ? 'титры' : k === 'voiceover' ? 'закадровый текст' : 'подводка'}`, STEP_DRAFT_MS);
+  for (const k of KINDS) if (k !== 'transcript') readyAt[k] = step(`Черновик: ${DRAFT_NAMES[k].toLowerCase()}`, STEP_DRAFT_MS);
   story.drafts = KINDS.map((k) => ({
     ...newDraft(k, story, state.directory.version),
     state: 'preparing' as const,

@@ -14,7 +14,7 @@ export const LOCK_BEAT_MS = 60_000;
 export const CHECK_MS = 1500;
 export const SENTENCE_MAX = 300;
 export const FIELD_MAX = 120;
-const SLOW_WORDS = 40; // a longer sentence does not fit the 10 second check
+const SLOW_WORDS = 40; // a longer sentence fails its first source check, as a slow model would
 
 export type EditOp =
   | { op: 'setText'; sentenceId: string; text: string }
@@ -84,7 +84,8 @@ function bump(state: State, ctx: Ctx, story: Story, d: Draft): void {
 }
 
 const clean = (text: string, max: number): string => {
-  const t = text.replace(/\s+/g, ' ').trim();
+  // control characters would break the DOCX export (invalid in XML)
+  const t = text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').replace(/\s+/g, ' ').trim();
   if (t === '') throw new DemoError(400, E.sentenceEmpty);
   if (t.length > max) throw new DemoError(400, max === SENTENCE_MAX ? E.sentenceLong : E.fieldLong);
   return t;

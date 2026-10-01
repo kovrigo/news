@@ -146,7 +146,6 @@ describe('editing after approval and export', () => {
   test('taking on oneself asks for no more than a reason, can be undone before approval, and fills the journal', async () => {
     const e = await env();
     const s = e.story('спортзала');
-    const vo = draftOf(s, 'voiceover');
     const mk = (await e.call(OLGA, 'GET', `/api/stories/${s.id}`)).json.drafts[3].marks.find((m: { kind: string }) => m.kind === 'no_source');
     const r = await e.call(OLGA, 'POST', `${base(s, 'voiceover')}/decide`, { markKey: mk.key, action: 'take', reason: 'Знаю из разговора с директором' });
     expect(r.json.drafts[3].pending).toBe(3);
@@ -154,7 +153,51 @@ describe('editing after approval and export', () => {
     expect(row.factText).toBe('Работы закончили в ноябре');
     const u = await e.call(OLGA, 'POST', `${base(s, 'voiceover')}/decide`, { markKey: mk.key, action: 'undo' });
     expect(u.json.drafts[3].pending).toBe(4);
-    void vo;
+  });
+});
+
+describe('edit operations', () => {
+  test('each op makes a new version; bad ids, ranges and a segment edit outside the transcript get 400', async () => {
+    const e = await env();
+    const s = e.story('спортзала');
+    const edit = async (kind: string, op: Record<string, unknown>) => {
+      const v = draftOf(e.story('спортзала'), kind).version;
+      await e.call(OLGA, 'POST', `${base(s, kind)}/lock`, {});
+      return e.call(OLGA, 'POST', `${base(s, kind)}/edit`, { baseVersion: v, op });
+    };
+    const ok = async (kind: string, op: Record<string, unknown>) => {
+      const v = draftOf(e.story('спортзала'), kind).version;
+      expect((await edit(kind, op)).status).toBe(200);
+      expect(draftOf(e.story('спортзала'), kind).version).toBe(v + 1);
+    };
+    const no = async (kind: string, op: Record<string, unknown>) => expect((await edit(kind, op)).status).toBe(400);
+
+    const vo = draftOf(s, 'voiceover');
+    await ok('voiceover', { op: 'addSentence', afterId: vo.sentences[0]!.id, text: 'Новое предложение.' });
+    expect(draftOf(e.story('спортзала'), 'voiceover').sentences[1]!.text).toBe('Новое предложение.');
+    await no('voiceover', { op: 'addSentence', afterId: 'нет', text: 'Текст.' });
+    await ok('voiceover', { op: 'removeSentence', sentenceId: vo.sentences[0]!.id });
+    expect(draftOf(e.story('спортзала'), 'voiceover').sentences.some((x) => x.id === vo.sentences[0]!.id)).toBe(false);
+    await no('voiceover', { op: 'setSegment', segmentId: s.segments[0]!.id, text: 'Текст.' });
+
+    await ok('leadin', { op: 'addSentence', afterId: null, text: 'Подводка дописана вручную.' });
+    const li = draftOf(e.story('спортзала'), 'leadin');
+    expect([li.state, li.decisions['insufficient']?.kind]).toEqual(['draft', 'accept']);
+
+    const sy = draftOf(s, 'syncs');
+    const y = sy.syncs[0]!;
+    await no('syncs', { op: 'syncRange', itemId: y.id, startMs: y.endMs, endMs: y.startMs });
+    await no('syncs', { op: 'syncRange', itemId: y.id, startMs: 0, endMs: s.videos.find((v) => v.id === y.videoId)!.durationMs + 1 });
+    await ok('syncs', { op: 'removeSync', itemId: y.id });
+    expect(draftOf(e.story('спортзала'), 'syncs').syncs).toHaveLength(sy.syncs.length - 1);
+
+    const t = draftOf(s, 'titles').titles[0]!;
+    await ok('titles', { op: 'setTitle', itemId: t.id, name: 'Иван Пробный', position: 'учитель' });
+    expect(draftOf(e.story('спортзала'), 'titles').titles[0]!.name).toBe('Иван Пробный');
+    await ok('titles', { op: 'removeTitle', itemId: t.id });
+    await no('titles', { op: 'removeTitle', itemId: t.id });
+    const rows = (await e.call(ANNA, 'GET', '/api/journal')).json.rows.map((r: { action: string }) => r.action);
+    expect(rows.filter((a: string) => a === 'remove_phrase').length).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -273,6 +316,22 @@ describe('roles', () => {
     expect((await e.call(null, 'GET', '/api/stories')).status).toBe(401);
   });
 
+  test('journal filters by story, user, action and period; a period that is not a number is ignored', async () => {
+    const e = await env();
+    const all = (await e.call(ANNA, 'GET', '/api/journal')).json.rows as { id: number; at: number; userName: string; action: string; storyTitle: string }[];
+    const r0 = all[0]!;
+    const st = e.state();
+    const rows = async (q: string) => (await e.call(ANNA, 'GET', `/api/journal?${q}`)).json.rows as typeof all;
+    const story = st.stories.find((x) => x.title === r0.storyTitle)!;
+    expect((await rows(`story=${story.id}`)).every((r) => r.storyTitle === story.title)).toBe(true);
+    const user = st.users.find((u) => u.name === r0.userName)!;
+    expect((await rows(`user=${user.id}`)).every((r) => r.userName === user.name)).toBe(true);
+    expect((await rows(`action=${r0.action}`)).every((r) => r.action === r0.action)).toBe(true);
+    expect((await rows(`from=${r0.at + 1}`)).length).toBe(all.filter((r) => r.at > r0.at).length);
+    expect((await rows(`to=${r0.at - 1}`)).length).toBe(all.filter((r) => r.at < r0.at).length);
+    expect(await rows('from=abc')).toHaveLength(all.length);
+  });
+
   test('the chief grants and removes the right to approve and cannot disable themselves', async () => {
     const e = await env();
     expect((await e.call(ANNA, 'POST', `/api/staff/${OLGA}`, { canApprove: true })).status).toBe(200);
@@ -283,6 +342,9 @@ describe('roles', () => {
     expect(self.json.error).toBe('Себя отключить нельзя');
     expect((await e.call(ANNA, 'POST', `/api/staff/${PAVEL}`, { enabled: false })).status).toBe(200);
     expect((await e.call(PAVEL, 'GET', '/api/stories')).status).toBe(401);
+    const again = await e.call(null, 'POST', '/api/login', { userId: PAVEL });
+    expect(again.status).toBe(403);
+    expect(again.json.error).toBe('Учётная запись отключена');
   });
 
   test('a deleted story is gone for everyone; the journal keeps its rows with "сюжет удалён"', async () => {
@@ -326,6 +388,35 @@ describe('processing and failure', () => {
     expect(v3.drafts[1].state).toBe('draft');
     expect(v3.drafts[1].syncs.length).toBe(3);
     expect(v3.drafts[1].failure).toBeUndefined();
+  });
+
+  test('a transcript edit while drafts are preparing reaches their links when they open', async () => {
+    const e = await env();
+    const id = (await e.call(OLGA, 'POST', '/api/stories', { setId: 'bridge' })).json.id as string;
+    const st = () => e.state().stories.find((x) => x.id === id)!;
+    while (draftOf(st(), 'transcript').state === 'preparing') (e.advance(500), await e.call(OLGA, 'GET', `/api/stories/${id}`));
+    expect(draftOf(st(), 'voiceover').state).toBe('preparing');
+    const prepared = draftOf(st(), 'voiceover').prepared!;
+    const fact = prepared.sentences!.flatMap((x) => x.facts).find((f) => f.link.status === 'linked' && f.source?.ref.startsWith('S'))!;
+    expect((await e.call(OLGA, 'POST', `/api/stories/${id}/drafts/transcript/lock`, {})).status).toBe(200);
+    const ed = await e.call(OLGA, 'POST', `/api/stories/${id}/drafts/transcript/edit`, { baseVersion: draftOf(st(), 'transcript').version, op: { op: 'setSegment', segmentId: fact.source!.ref, text: 'Совсем другие слова.' } });
+    expect(ed.status).toBe(200);
+    e.advance(10_000);
+    await e.call(OLGA, 'GET', `/api/stories/${id}`);
+    const vo = draftOf(st(), 'voiceover');
+    expect(vo.state).toBe('draft');
+    expect(vo.sentences.flatMap((x) => x.facts).find((f) => f.text === fact.text)!.link.status).not.toBe('linked');
+    expect(vo.basedOn.transcript).toBe(st().transcriptVersion);
+  });
+
+  test('a role switch frees the edit locks of the account that leaves; a broken cookie is no login', async () => {
+    const e = await env();
+    const s = e.story('спортзала');
+    expect((await e.call(OLGA, 'POST', `/api/stories/${s.id}/drafts/voiceover/lock`, {})).status).toBe(200);
+    expect((await e.call(OLGA, 'POST', '/api/logout', {})).status).toBe(200);
+    expect(draftOf(e.story('спортзала'), 'voiceover').lock).toBeUndefined();
+    expect((await e.call('%E0%A4%A', 'GET', '/api/session')).status).toBe(200);
+    expect((await e.call('%E0%A4%A', 'GET', '/api/stories')).status).toBe(401);
   });
 
   test('a story deleted while processing disappears at once', async () => {

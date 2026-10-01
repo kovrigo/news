@@ -7,11 +7,6 @@ export type Sel = { place: Place; rowId: string; nonce: number };
 const INSTRUCTION = 'В исходнике есть указание. Сервис его не выполнял';
 const reduced = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function sourceLabel(story: StoryView, p: Place): string {
-  if (p.kind === 'video') return `${story.videos.find((v) => v.id === p.videoId)?.name ?? p.videoId}, ${span(p.startMs, p.endMs, (story.videos.find((v) => v.id === p.videoId)?.durationMs ?? 0) >= 3600_000)}`;
-  return `${story.docs.find((d) => d.id === p.docId)?.name ?? 'Документ'}, абзац ${p.n}`;
-}
-
 type Props = {
   story: StoryView;
   draft: DraftView;

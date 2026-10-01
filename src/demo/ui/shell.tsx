@@ -46,10 +46,14 @@ export function useHash(): string {
 export function usePoll<T>(path: string | null, every: number): { data: T | null; error: string | null; reload: () => Promise<void>; set: (v: T) => void } {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const gen = useRef(0); // an answer for a path that is no longer shown is dropped
   const reload = useCallback(async () => {
     if (!path) return;
+    const g = gen.current;
     try {
-      setData(await api<T>('GET', path));
+      const v = await api<T>('GET', path);
+      if (g !== gen.current) return;
+      setData(v);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -57,6 +61,7 @@ export function usePoll<T>(path: string | null, every: number): { data: T | null
     }
   }, [path]);
   useEffect(() => {
+    gen.current++;
     setData(null);
     void reload();
     const t = setInterval(() => void reload(), every);

@@ -16,7 +16,7 @@ Open the URL that `paneweb up` prints (the `local:` address works on this machin
 - Павел Тестов — выпускающий редактор, право утверждать;
 - Анна Пробная — главный редактор.
 
-Typed text is not filtered: sentence edits, return comments, reasons, speaker names and directory entries are saved as entered. No program can tell invented text from real material, so the rule is on people: never type or paste real material or real people's data into the demo. Everything typed is written to `out/demo/state.json` on this machine at once; `bun run demo-reset` replaces that file with the invented seed, which removes it. An edit not yet saved while offline waits in the browser's localStorage and is saved when the connection returns. Every `demo-reset` writes a new `resetId` into the state; the browser remembers the last one it saw (`localStorage['demo-reset-id']`). The next time a browser opens the demo after a reset, it deletes all its `unsent:*` drafts before any draft opens. A browser that never opens the demo again keeps such a draft until its storage is cleared.
+Typed text is not filtered: sentence edits, return comments, reasons, speaker names and directory entries are saved as entered. No program can tell invented text from real material, so the rule is on people: never type or paste real material or real people's data into the demo. Everything typed is written to `out/demo/state.json` on this machine at once; `bun run demo-reset` replaces that file with the invented seed, which removes it. An edit not yet saved while offline waits in the browser's localStorage, under the account that typed it, and is saved when the connection returns. Every `demo-reset` writes a new `resetId` into the state; the browser remembers the last one it saw (`localStorage['demo-reset-id']`). The next time a browser opens the demo after a reset, it deletes all its `unsent:*` drafts before any draft opens. A browser that never opens the demo again keeps such a draft until its storage is cleared.
 
 A role switch is «Сменить роль»: a logout plus a login. Every page carries the banner «Демо на придуманных данных. Не загружайте и не вставляйте настоящие материалы.», every exported file starts with `ДЕМО — придуманные данные, не для эфира`.
 
@@ -32,11 +32,11 @@ Stop it with `paneweb down`. Never start the server by hand: `bun run dev` needs
 | `bun run dev` | `Демо: http://127.0.0.1:<port>/`. Without `PORT` it prints a hint to use `paneweb up` and exits 2. With `MODELS` set to anything but `mock` it prints `Демо работает только на заглушках: MODELS=<value> не поддерживается` and exits 2. Without a state file it asks for `bun run demo-reset` and exits 2 | runs until stopped |
 | `bun run test` | `bun test` summary: pass and fail counts. No network, no server | 0 when all pass |
 | `bun run typecheck` | nothing when clean (`tsc --noEmit`) | 0 |
-| `bun run e2e` | runs `demo-reset`, takes the URL from `paneweb up` and the CDP address from `paneweb browser`, drives the browser; one line per scenario: `ok   <scenario>` or `FAIL <scenario>: <reason>` | 0 when all pass, 1 otherwise |
+| `bun run e2e` | runs `demo-reset` before and after, takes the URL from `paneweb up` and the CDP address from `paneweb browser`, drives the browser; one line per scenario: `ok   <scenario>` or `FAIL <scenario>: <reason>` | 0 when all pass, 1 otherwise |
 | `bun run quality --models=mock --set=fixtures/demo` | the prototype quality scenario, see below | 0 pass, 1 a threshold fails |
 | `bun run scripts/make-demo-sets.ts` | one line per built-in source set; rewrites `fixtures/demo-sets/*` (placeholder videos, recorded ASR and model answers) | 0 |
 
-State is one JSON file, `out/demo/state.json` or `$DEMO_STATE`. It is read at the start of every request and written atomically after every change. `bun run demo-reset` returns the demo to the start.
+State is one JSON file, `out/demo/state.json` or `$DEMO_STATE`. Requests are handled one at a time; each reads it at the start and writes it atomically after a change, so overlapping requests do not lose writes. `bun run demo-reset` returns the demo to the start.
 
 ## What is where
 
@@ -83,6 +83,6 @@ Thresholds from the Brief: `recall >= 0.95`, injection failures `= 0`.
 - `scripts/quality.ts`: the quality scenario.
 - `fixtures/demo/story-1`: invented story, placeholder "video" files, recordings, labels. See its README.
 
-A story directory holds `story.json` (`{ title, videos, docs }`), the files it names, and optionally `labels.json` and `injection.json`. The mock answers only for material it has recordings for. Anything else fails with `Заглушка знает только демо-исходники. Включите настоящие модели`.
+A story directory holds `story.json` (`{ title, videos, docs }`), the files it names, and optionally `labels.json` and `injection.json`. The mock answers only for material it has recordings for. Anything else fails with `Заглушка знает только демо-исходники`.
 
 Limits: ordinal numbers (`двадцать шестом`) are not converted and void the number. Word-level confidence comes with the real providers. Directory lookup of names and places is not here.

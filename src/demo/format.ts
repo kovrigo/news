@@ -20,8 +20,3 @@ export function fmtClock(ms: number, hours = false): string {
 export function fmtSpan(a: number, b: number, hours = false): string {
   return `${fmtClock(a, hours)}–${fmtClock(b, hours)}`;
 }
-export function fmtDuration(ms: number): string {
-  const m = Math.max(0, Math.round(ms / 60000));
-  const h = Math.floor(m / 60);
-  return h > 0 ? `${h} ч ${m % 60} мин` : `${m} мин`;
-}

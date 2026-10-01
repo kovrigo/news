@@ -106,7 +106,7 @@ describe('malformed output', () => {
 describe('unknown files', () => {
   test('mock ASR throws the catalog text', async () => {
     const err = await mockAsr(STORY).transcribe({ name: 'x.mp4', bytes: new Uint8Array([1, 2, 3]) }).catch((e: Error) => e);
-    expect((err as Error).message).toBe('Заглушка знает только демо-исходники. Включите настоящие модели');
+    expect((err as Error).message).toBe('Заглушка знает только демо-исходники');
     expect((err as Error).message).toBe(MOCK_UNKNOWN);
   });
   test('runStory rejects when a video is unknown', async () => {

@@ -1,6 +1,7 @@
 import { createApp } from './api.ts';
 import index from './ui/index.html';
 import { refuseStart } from './boundary.ts';
+import { BODY_MAX } from './schemas.ts';
 import { NO_STATE, stateExists, statePath } from './state.ts';
 
 // The boundary is checked before anything starts: only the mock adapters exist, and nothing else is an option.
@@ -18,6 +19,7 @@ const app = createApp({ statePath: statePath() });
 const server = Bun.serve({
   hostname: '127.0.0.1',
   port: Number(process.env.PORT),
+  maxRequestBodySize: BODY_MAX,
   routes: { '/': index },
   fetch: (req) => (new URL(req.url).pathname.startsWith('/api/') ? app.fetch(req) : new Response('Нет такого адреса', { status: 404 })),
 });

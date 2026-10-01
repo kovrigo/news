@@ -41,7 +41,7 @@ export function approveBlock(state: State, ctx: Ctx, story: Story, d: Draft): st
     case 'not_needed': return E.notNeededBlock;
     case 'returned': return E.returnedWait;
   }
-  if (lockIsLive(d, ctx.now) && d.lock!.userId !== ctx.user.id) return E.lockedElse(userName(state, d.lock!.userId));
+  if (lockIsLive(d, ctx.now) && d.lock!.userId !== ctx.user.id) return E.lockedBy(userName(state, d.lock!.userId));
   if (d.sentences.some((s) => s.checkingUntil)) return E.checking;
   const n = pendingCount(d, story);
   return n > 0 ? E.pendingMarks(n) : null;

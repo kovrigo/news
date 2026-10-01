@@ -100,7 +100,7 @@ export function exportDrafts(
   const one = (d: Draft): ExportFile => {
     const { header, body } = describe(state, story, d);
     const base = `${story.title} — ${DRAFT_NAMES[d.kind]}`;
-    if (a.format === 'docx') return { name: fileName(base, 'docx'), mime: `${DOC_CT}.document`.replace('wordprocessingml', 'wordprocessingml'), bytes: toDocx(header, body) };
+    if (a.format === 'docx') return { name: fileName(base, 'docx'), mime: `${DOC_CT}.document`, bytes: toDocx(header, body) };
     return { name: fileName(base, 'txt'), mime: 'text/plain; charset=utf-8', bytes: toText(header, body, a.noHeader && d.kind === 'leadin') };
   };
   const files = drafts.map(one);
