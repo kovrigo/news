@@ -723,7 +723,7 @@ function DraftPane(p: PaneProps) {
       </section>
 
       <div className="review-note" role="status">
-        <span className={`icon${approveReason ? '' : ' ok'}`} aria-hidden="true">{approveReason ? '!' : '✓'}</span>
+        <span className={`icon${approveReason && d.state !== 'approved' ? '' : ' ok'}`} aria-hidden="true">{approveReason && d.state !== 'approved' ? '!' : '✓'}</span>
         <div>
           {pendingMarks.length > 0 ? (
             <>
