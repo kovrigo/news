@@ -127,6 +127,7 @@ export type JournalRow = {
 };
 export type State = {
   v: 1;
+  resetId: string; // new on every demo-reset; the browser drops offline drafts of an older one
   seq: number;
   failSeq: number;
   users: User[];

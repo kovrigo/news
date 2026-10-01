@@ -22,6 +22,17 @@ const writeUnsent = (k: string, v: Unsent | null): void => {
   }
 };
 
+// After a demo-reset, offline drafts saved before it are dropped: the browser keeps the reset id it last saw.
+export function forgetUnsentAfterReset(resetId: string): void {
+  try {
+    if (localStorage.getItem('demo-reset-id') === resetId) return;
+    for (const k of Object.keys(localStorage)) if (k.startsWith('unsent:')) localStorage.removeItem(k);
+    localStorage.setItem('demo-reset-id', resetId);
+  } catch {
+    /* storage blocked: nothing was stored either */
+  }
+}
+
 // Edit mode of one draft: the lock, the heartbeat, autosave 1.5 s after the last change, unsent text for offline.
 export function useEditor(a: { storyId: string; kind: string; version: number; online: boolean; apply: (v: StoryView) => void; lockedByMe: boolean }) {
   const base = `/api/stories/${a.storyId}/drafts/${a.kind}`;

@@ -32,6 +32,7 @@ const PLACES = ['Заречинск', 'Тишма', 'Лугово', 'Берёз�
 export function emptyState(): State {
   return {
     v: 1,
+    resetId: crypto.randomUUID(),
     seq: 100,
     failSeq: 1000,
     users: structuredClone(USERS),

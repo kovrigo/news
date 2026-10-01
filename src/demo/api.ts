@@ -60,7 +60,7 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
   };
 
   const routes: Route[] = [
-    { method: 'GET', re: /^\/api\/session$/, auth: false, run: (c) => json({ user: c.user && publicUser(c.user), accounts: c.state.users.map(publicUser), banner: BANNER }) },
+    { method: 'GET', re: /^\/api\/session$/, auth: false, run: (c) => json({ user: c.user && publicUser(c.user), accounts: c.state.users.map(publicUser), banner: BANNER, resetId: c.state.resetId }) },
     {
       method: 'POST', re: /^\/api\/login$/, auth: false,
       run: (c) => {

@@ -256,6 +256,36 @@ scenario('offline: band, approve disabled, back online', async () => {
   await page.close();
 });
 
+scenario('offline draft: kept on reload, gone after demo-reset', async () => {
+  const unsent = (p: Page): Promise<string[]> => p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('unsent:')));
+  const page = await newPage(1280, 800);
+  await login(page, 'Ольга Демина');
+  await openStory(page, 'Открытие спортзала', 'Закадровый текст');
+  await page.getByRole('button', { name: 'Править черновик' }).click();
+  const ta = page.locator('textarea[data-edit^="s:"]').first();
+  await ta.waitFor({ state: 'visible', timeout: 5000 });
+  await context.setOffline(true);
+  try {
+    await ta.fill('Офлайн-правка, которую сброс должен убрать.');
+    await page.waitForFunction(() => Object.keys(localStorage).some((k) => k.startsWith('unsent:')), null, { timeout: 8000 });
+  } finally {
+    await page.close();
+    await context.setOffline(false);
+  }
+  const again = await newPage(1280, 800);
+  await again.goto(base!);
+  await visible(again, 'h1:has-text("Сюжеты")', 'list after reopening');
+  check((await unsent(again)).length === 1, 'offline draft kept when reopened without a reset');
+  await again.close();
+  run(['bun', 'run', 'demo-reset']);
+  const after = await newPage(1280, 800);
+  await after.goto(base!);
+  await visible(after, '.demo-banner [role="note"]', 'page after reset');
+  await after.waitForFunction(() => !Object.keys(localStorage).some((k) => k.startsWith('unsent:')), null, { timeout: 8000 });
+  check((await unsent(after)).length === 0, 'offline draft gone after demo-reset');
+  await after.close();
+});
+
 scenario('1280: chief reads the journal and the staff page, deletes a story', async () => {
   const page = await newPage(1280, 800);
   await login(page, 'Анна Пробная');

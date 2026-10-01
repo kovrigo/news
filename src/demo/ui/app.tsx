@@ -2,6 +2,7 @@ import { StrictMode, useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api, unauthorized, type Account } from './api.ts';
 import { Directory, Journal, List, Login, NewStory, Staff } from './pages.tsx';
+import { forgetUnsentAfterReset } from './editor.ts';
 import { Shell, StoreCtx, useConnection, useHash } from './shell.tsx';
 import { StoryPage } from './story.tsx';
 import './styles.css';
@@ -15,7 +16,8 @@ function App() {
   const hash = useHash();
 
   const refresh = useCallback(async () => {
-    const r = await api<{ user: Account | null; accounts: Account[] }>('GET', '/api/session');
+    const r = await api<{ user: Account | null; accounts: Account[]; resetId: string }>('GET', '/api/session');
+    forgetUnsentAfterReset(r.resetId);
     setUser(r.user);
     setAccounts(r.accounts);
     setReady(true);
