@@ -14,7 +14,8 @@ import { statSync } from 'node:fs';
 import { BAD_STATE, loadState, NO_STATE, saveState, STATE_FULL, STATE_MAX, stateExists } from './state.ts';
 import { BANNER, E } from './texts.ts';
 
-export type AppDeps = { statePath: string; now?: () => number };
+// hosts: names answered besides 127.0.0.1 and localhost — only this machine's own tailnet name, through which the board opens the demo
+export type AppDeps = { statePath: string; now?: () => number; hosts?: string[] };
 type Call = {
   req: Request;
   url: URL;
@@ -223,11 +224,11 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
 
   async function handle(req: Request, text: string): Promise<Response> {
     const url = new URL(req.url);
-    // only this machine's own address: a page elsewhere that points its name at 127.0.0.1 gets nothing
-    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') return fail(403, E.forbidden);
-    // a change comes only from the demo's own page
+    // only this machine's own names: a page elsewhere that points its name at 127.0.0.1 gets nothing
+    if (!['127.0.0.1', 'localhost', ...(deps.hosts ?? [])].includes(url.hostname)) return fail(403, E.forbidden);
+    // a change comes only from the demo's own page; behind the board's https proxy the page is https and the request http, so name and port are compared
     const origin = req.headers.get('origin');
-    if (req.method !== 'GET' && origin !== null && origin !== url.origin) return fail(403, E.forbidden);
+    if (req.method !== 'GET' && origin !== null && (!URL.canParse(origin) || new URL(origin).host !== url.host)) return fail(403, E.forbidden);
     const route = routes.find((r) => r.method === req.method && r.re.test(url.pathname));
     if (!route) return fail(404, E.noAddress);
     let body: unknown = {};

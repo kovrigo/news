@@ -15,7 +15,11 @@ if (!stateExists(statePath())) {
   process.exit(2);
 }
 
-const app = createApp({ statePath: statePath() });
+// The board opens the demo at this machine's tailnet name through an https proxy to 127.0.0.1.
+// paneweb's start script passes that one name in DEMO_HOST; nothing else besides 127.0.0.1 and localhost is answered.
+const tailnet = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(process.env.DEMO_HOST ?? '') ? process.env.DEMO_HOST! : null;
+console.log(tailnet ? `Имя в tailnet: ${tailnet}` : 'DEMO_HOST не задан: демо отвечает только на 127.0.0.1 и localhost');
+const app = createApp({ statePath: statePath(), hosts: tailnet ? [tailnet] : [] });
 const server = Bun.serve({
   hostname: '127.0.0.1',
   port: Number(process.env.PORT),

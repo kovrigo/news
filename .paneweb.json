@@ -1,1 +1,1 @@
-{"service":{"cmd":"bun run dev","url_path":"/"}}
+{"service":{"cmd":"bash scripts/paneweb-dev.sh","url_path":"/"}}
