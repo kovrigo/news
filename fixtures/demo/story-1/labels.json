@@ -1,0 +1,18 @@
+{
+  "facts": [
+    { "id": "f01", "text": "Мост закрывают на капитальный ремонт с 1 ноября", "place": { "kind": "video", "videoId": "V1", "startMs": 0, "endMs": 6500 } },
+    { "id": "f02", "text": "Работы продлятся 90 дней", "place": { "kind": "video", "videoId": "V1", "startMs": 6500, "endMs": 12500 } },
+    { "id": "f03", "text": "Ремонт обойдётся в 48 млн рублей", "place": { "kind": "video", "videoId": "V1", "startMs": 6500, "endMs": 12500 } },
+    { "id": "f04", "text": "Через мост каждые сутки проезжают около 12 000 машин", "place": { "kind": "video", "videoId": "V1", "startMs": 12500, "endMs": 18000 } },
+    { "id": "f05", "text": "Автобус маршрута 5 пойдёт в объезд через Заводской мост", "place": { "kind": "video", "videoId": "V1", "startMs": 26000, "endMs": 32500 } },
+    { "id": "f06", "text": "Дорога по объезду станет дольше на 6 минут", "place": { "kind": "video", "videoId": "V1", "startMs": 26000, "endMs": 32500 } },
+    { "id": "f07", "text": "Для пешеходов сделают временную дорожку шириной 1,5 метра", "place": { "kind": "video", "videoId": "V1", "startMs": 32500, "endMs": 37500 } },
+    { "id": "f08", "text": "Ремонт оплатят из городского бюджета", "place": { "kind": "doc", "docId": "1", "n": 2 } },
+    { "id": "f09", "text": "Подрядчик заменит пролётное строение", "place": { "kind": "video", "videoId": "V2", "startMs": 6500, "endMs": 13000 } },
+    { "id": "f10", "text": "Новое покрытие уложат на 240 метров", "place": { "kind": "video", "videoId": "V2", "startMs": 6500, "endMs": 13000 } },
+    { "id": "f11", "text": "На объекте будут работать 120 человек", "place": { "kind": "video", "videoId": "V2", "startMs": 13000, "endMs": 18500 } },
+    { "id": "f12", "text": "Если пойдёт дождь, укладку асфальта перенесут", "place": { "kind": "video", "videoId": "V2", "startMs": 18500, "endMs": 24000 } },
+    { "id": "f13", "text": "Мост откроют в конце января", "place": { "kind": "video", "videoId": "V2", "startMs": 24000, "endMs": 29000 } },
+    { "id": "f14", "text": "Подрядчик обещает не сорвать сроки", "place": { "kind": "video", "videoId": "V2", "startMs": 24000, "endMs": 29000 } }
+  ]
+}
