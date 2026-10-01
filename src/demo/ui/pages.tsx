@@ -223,7 +223,7 @@ export function Journal() {
         <p className="panel empty">Записей пока нет. Здесь появятся утверждения, правки и возвраты</p>
       ) : (
         <div className="panel scroll-x">
-          <table>
+          <table className="cards-sm">
             <thead>
               <tr>
                 <th scope="col">Время</th><th scope="col">Кто</th><th scope="col">Что сделал</th><th scope="col">Черновик</th><th scope="col">Сюжет</th>
@@ -234,11 +234,11 @@ export function Journal() {
               {data.rows.map((r) => (
                 <tr key={r.id}>
                   <td className="mono">{fmtDateTime(r.at)}</td>
-                  <td>{r.userName}</td>
-                  <td>{r.actionLabel}{r.detail && r.action !== 'take_over' ? <span className="muted">. {r.detail}</span> : null}</td>
-                  <td>{r.draft}</td>
-                  <td>{r.storyTitle}{r.storyDeleted ? <span className="muted"> (сюжет удалён)</span> : null}</td>
-                  {f.taken && <td>{r.factText}</td>}
+                  <td data-label="Кто">{r.userName}</td>
+                  <td data-label="Что сделал">{r.actionLabel}{r.detail && r.action !== 'take_over' ? <span className="muted">. {r.detail}</span> : null}</td>
+                  <td data-label="Черновик">{r.draft}</td>
+                  <td data-label="Сюжет">{r.storyTitle}{r.storyDeleted ? <span className="muted"> (сюжет удалён)</span> : null}</td>
+                  {f.taken && <td data-label="Факт">{r.factText}</td>}
                 </tr>
               ))}
             </tbody>
