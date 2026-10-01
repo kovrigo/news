@@ -16,6 +16,8 @@ Open the URL that `paneweb up` prints (the `local:` address works on this machin
 - Павел Тестов — выпускающий редактор, право утверждать;
 - Анна Пробная — главный редактор.
 
+Typed text is not filtered: sentence edits, return comments, reasons, speaker names and directory entries are saved as entered. No program can tell invented text from real material, so the rule is on people: never type or paste real material or real people's data into the demo. Everything typed is written to `out/demo/state.json` on this machine at once; `bun run demo-reset` replaces that file with the invented seed, which removes it. An edit not yet saved while offline waits in the browser's localStorage until it is saved or cancelled; `demo-reset` does not touch the browser.
+
 A role switch is «Сменить роль»: a logout plus a login. Every page carries the banner «Демо на придуманных данных. Не загружайте и не вставляйте настоящие материалы.», every exported file starts with `ДЕМО — придуманные данные, не для эфира`.
 
 Stop it with `paneweb down`. Never start the server by hand: `bun run dev` needs `PORT`, which only paneweb sets.

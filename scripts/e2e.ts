@@ -33,7 +33,7 @@ const visible = async (page: Page, sel: string, msg: string, timeout = 5000): Pr
   }
 };
 const banner = async (page: Page): Promise<void> => {
-  const t = await page.locator('[role="note"].demo-banner').first().textContent({ timeout: 3000 });
+  const t = await page.locator('.demo-banner [role="note"]').first().textContent({ timeout: 3000 });
   check(t?.trim() === BANNER, `banner missing or wrong on ${page.url()}`);
 };
 async function newPage(w: number, h: number): Promise<Page> {
@@ -180,8 +180,10 @@ scenario('axe: list, story screen and every dialog, banner on every page', async
     await page.addScriptTag({ path: axePath });
     const res = await page.evaluate(async () => {
       // @ts-expect-error axe is injected
-      const r = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa'] } });
+      const r = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa'] }, rules: { region: { enabled: true } } });
       if (r.passes.length < 10) return [`axe ran only ${r.passes.length} rules`];
+      const ran = [...r.passes, ...r.violations].some((x: { id: string }) => x.id === 'region');
+      if (!ran) return ['axe did not run the region rule'];
       return r.violations.map((v: { id: string; nodes: { target: unknown[] }[] }) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => String(n.target)).join(' | ')}`);
     });
     await banner(page);

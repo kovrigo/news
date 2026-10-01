@@ -126,7 +126,7 @@ export function TopBar() {
 export function Shell(p: { children: ReactNode; live: string; online: boolean }) {
   return (
     <div className="app">
-      <div role="note" className="demo-banner">{BANNER}</div>
+      <aside className="demo-banner" aria-label="Демо"><p role="note">{BANNER}</p></aside>
       {!p.online && <div className="offline" role="status">Нет связи. Правки сохранятся, когда связь вернётся</div>}
       <TopBar />
       {p.children}

@@ -30,6 +30,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* banners */
 .demo-banner { background: var(--check); color: var(--text); padding: var(--sm) var(--md); font: 500 0.8125rem/1.3 var(--f-ui); text-align: center; border-bottom: 1px solid var(--rule); }
+.demo-banner p { margin: 0; }
 .offline { background: var(--returned-tint); color: var(--returned); padding: var(--sm) var(--md); font: 600 0.875rem/1.3 var(--f-ui); text-align: center; border-bottom: 1px solid var(--returned); }
 
 /* top bar */
