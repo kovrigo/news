@@ -231,7 +231,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 var(--md); display: flex; flex-dir
 legend { font-weight: 600; margin-bottom: var(--xs); padding: 0; }
 .check-row { display: flex; gap: var(--sm); align-items: flex-start; min-height: 32px; }
 .check-row.off { color: var(--muted); }
-.check-row input { margin-top: 4px; width: 18px; height: 18px; }
+.check-row input { flex: none; margin-top: 4px; width: 18px; height: 18px; } /* a wrapped label must not squeeze the box */
 
 @media (min-width: 1550px) {
   .workspace { grid-template-columns: 240px minmax(500px, 1fr) 440px; }
