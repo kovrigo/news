@@ -153,7 +153,7 @@ function detailOf(state: State, r: JournalRow): string {
 function lastJournal(state: State, story: Story, d: Draft): { at: number; text: string } | undefined {
   const row = state.journal.filter((r) => r.storyId === story.id && r.draft === d.kind).sort((a, b) => b.at - a.at || b.id - a.id)[0];
   const detail = row && detailOf(state, row);
-  return row ? { at: row.at, text: `${row.userName}: ${ACTION_LABELS[row.action] ?? row.action}${detail ? `. ${detail}` : ''}` } : undefined;
+  return row ? { at: row.at, text: `${row.userName}: ${ACTION_LABELS[row.action] ?? row.action}${detail ? ` — ${detail}` : ''}` } : undefined;
 }
 
 export function draftView(state: State, ctx: Ctx, story: Story, d: Draft): DraftView {
