@@ -1,0 +1,34 @@
+[
+  {
+    "startMs": 0,
+    "endMs": 6500,
+    "speaker": 1,
+    "text": "Я Игорь Белов, председатель родительского комитета.",
+    "confidence": 0.96,
+    "lang": "ru"
+  },
+  {
+    "startMs": 6500,
+    "endMs": 13000,
+    "speaker": 1,
+    "text": "Зал строили шесть месяцев, деньги выделил районный бюджет.",
+    "confidence": 0.94,
+    "lang": "ru"
+  },
+  {
+    "startMs": 13000,
+    "endMs": 19500,
+    "speaker": 1,
+    "text": "Thank you, thank you, we are very happy about the new gym.",
+    "confidence": 0.88,
+    "lang": "other"
+  },
+  {
+    "startMs": 19500,
+    "endMs": 26000,
+    "speaker": 1,
+    "text": "Дети из Сосновки давно ждали этот зал, и теперь им не придётся ездить на тренировки в соседний посёлок.",
+    "confidence": 0.93,
+    "lang": "ru"
+  }
+]
