@@ -528,4 +528,38 @@ describe('second opinion fixes', () => {
     expect(kept.checkingUntil).toBeUndefined();
     expect(kept.facts[0]!.source?.ref).toBe(ref);
   });
+
+  test('a source the person chose is shown as manual to the approver; a found source is not; a new edit clears it', async () => {
+    const e = await env();
+    const s = e.story('Старого моста');
+    const vo = draftOf(s, 'voiceover');
+    const view = async () => (await e.call(PAVEL, 'GET', `/api/stories/${s.id}`)).json.drafts;
+    const before = (await view())[3];
+    expect(before.manualSources).toBe(0);
+    expect(before.sentences.flatMap((x: { facts: { manualBy?: string }[] }) => x.facts).some((f: { manualBy?: string }) => f.manualBy)).toBe(false);
+    const sid = vo.sentences.find((x) => x.text.startsWith('Рядом с мостом'))!.id;
+    const ref = s.paragraphs[0]!.id;
+    const r = await e.call(OLGA, 'POST', `${base(s, 'voiceover')}/edit`, { baseVersion: vo.version, op: { op: 'setSource', sentenceId: sid, factIndex: 0, ref } });
+    expect(r.status).toBe(200);
+    const after = (await view())[3];
+    expect(after.manualSources).toBe(1);
+    const fact = after.sentences.find((x: { id: string }) => x.id === sid).facts[0];
+    expect(fact.manualBy).toBe('Ольга Демина');
+    // a title source chosen by hand counts too
+    const ti = draftOf(s, 'titles');
+    expect((await view())[2].titles[0].manualBy).toBeUndefined();
+    const t = await e.call(OLGA, 'POST', `${base(s, 'titles')}/edit`, { baseVersion: ti.version, op: { op: 'setTitleSource', itemId: ti.titles[0]!.id, ref: ti.titles[0]!.source!.ref } });
+    expect(t.status).toBe(200);
+    const titles = (await view())[2];
+    expect(titles.titles[0].status).toBe('linked');
+    expect(titles.titles[0].manualBy).toBe('Ольга Демина');
+    expect(titles.manualSources).toBe(1);
+    // the next edit of the sentence goes back to the automatic search
+    const ed = await e.call(OLGA, 'POST', `${base(s, 'voiceover')}/edit`, { baseVersion: r.json.drafts[3].version, op: { op: 'setText', sentenceId: sid, text: 'Мост закроют на девяносто дней.' } });
+    expect(ed.status).toBe(200);
+    e.advance(2000);
+    const rechecked = (await view())[3];
+    expect(rechecked.sentences.find((x: { id: string }) => x.id === sid).facts[0].status).toBe('linked');
+    expect(rechecked.manualSources).toBe(0);
+  });
 });

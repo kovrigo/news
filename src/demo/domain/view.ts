@@ -17,6 +17,7 @@ export type FactView = {
   text: string;
   status: 'linked' | 'no_source' | 'taken';
   where?: PlaceView;
+  manualBy?: string; // linked to a place the person chose
   reason?: string;
   takenBy?: string;
   takenReason?: string;
@@ -39,6 +40,7 @@ export type TitleView = {
   videoId: string;
   where?: PlaceView;
   status: 'linked' | 'no_source' | 'taken';
+  manualBy?: string;
   reason?: string;
   takenBy?: string;
   dir: 'ok' | 'no_name' | 'position';
@@ -59,6 +61,7 @@ export type DraftView = {
   marks: Mark[];
   approveLabel: string;
   approveBlock: string | null;
+  manualSources: number; // linked facts and titles whose source the person chose
   mayApprove: boolean;
   maySubmit: boolean;
   mayReturn: boolean;
@@ -156,7 +159,8 @@ export function draftView(state: State, ctx: Ctx, story: Story, d: Draft): Draft
       const key = `nosrc:${s.id}:${i}`;
       const taken = takenOf(key);
       const base = { index: i, text: f.text, markKey: markKeys.has(key) ? key : undefined };
-      if (f.link.status === 'linked') return { ...base, status: 'linked' as const, where: pieceOf(story, f.source?.ref, f.link.place) };
+      if (f.link.status === 'linked')
+        return { ...base, status: 'linked' as const, where: pieceOf(story, f.source?.ref, f.link.place), manualBy: f.manual ? nameOf(state, f.manual.userId) : undefined };
       const where = f.source ? placeOfRef(story, f.source.ref) : undefined;
       return taken
         ? { ...base, status: 'taken' as const, where, takenBy: taken.by, takenReason: taken.reason }
@@ -185,6 +189,7 @@ export function draftView(state: State, ctx: Ctx, story: Story, d: Draft): Draft
       status,
       reason: t.link.status === 'no_source' ? NO_SOURCE_REASONS[t.link.reason] : undefined,
       takenBy: taken?.by,
+      manualBy: status === 'linked' && t.manual ? nameOf(state, t.manual.userId) : undefined,
       dir: t.dir,
       dirText: t.dir === 'ok' ? 'Есть в справочнике' : t.dir === 'no_name' ? 'Нет в справочнике' : `Должность не совпадает со справочником: ${t.dirExpected}`,
       overflow: overflowOf(t.name, t.position),
@@ -219,6 +224,7 @@ export function draftView(state: State, ctx: Ctx, story: Story, d: Draft): Draft
     marks,
     approveLabel: APPROVE_LABELS[d.kind],
     approveBlock: block,
+    manualSources: [...sentences.flatMap((s) => s.facts), ...titles].filter((x) => x.manualBy).length,
     mayApprove: me.canApprove,
     maySubmit: !me.canApprove && ['draft', 'returned', 'reapprove'].includes(d.state),
     mayReturn: me.canApprove && ['draft', 'review', 'reapprove', 'approved'].includes(d.state),

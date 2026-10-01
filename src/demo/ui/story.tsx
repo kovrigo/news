@@ -420,6 +420,7 @@ function DraftPane(p: PaneProps) {
             f.status === 'linked' ? (
               <button key={f.index} type="button" tabIndex={-1} className="src" onClick={(e) => openFact(f, s.id, e.currentTarget)}>
                 {f.where?.label}<small>{f.where?.sourceName}</small>
+                {f.manualBy && <small>вручную: {f.manualBy}</small>}
               </button>
             ) : f.status === 'taken' ? (
               <div key={f.index} className="src taken">Взято на себя<small>{f.takenBy}</small></div>
@@ -450,7 +451,7 @@ function DraftPane(p: PaneProps) {
                 if (f.status === 'linked')
                   return (
                     <Inline key={k} className={`fact${selected ? ' on' : ''}`} onActivate={(el) => openFact(f, s.id, el)}>
-                      {pc.text}<span className="sr">. Исходник: {f.where?.sourceName}, {f.where?.label}</span>
+                      {pc.text}<span className="sr">. {f.manualBy ? `Исходник указал вручную ${f.manualBy}` : 'Исходник'}: {f.where?.sourceName}, {f.where?.label}</span>
                     </Inline>
                   );
                 if (f.status === 'taken') return <span key={k} className="taken-word">{pc.text}</span>;
@@ -512,7 +513,10 @@ function DraftPane(p: PaneProps) {
       <div className={`line${selected ? ' selected' : ''}`} key={t.id} id={`row-${t.id}`}>
         <div className="gutter">
           {t.where && t.status !== 'no_source' ? (
-            <button type="button" tabIndex={-1} className="src" onClick={(e) => openFact(t, t.id, e.currentTarget)}>{t.where.label}<small>{t.where.sourceName}</small></button>
+            <button type="button" tabIndex={-1} className="src" onClick={(e) => openFact(t, t.id, e.currentTarget)}>
+              {t.where.label}<small>{t.where.sourceName}</small>
+              {t.manualBy && <small>вручную: {t.manualBy}</small>}
+            </button>
           ) : t.status === 'taken' ? (
             <div className="src taken">Взято на себя<small>{t.takenBy}</small></div>
           ) : (
@@ -532,7 +536,7 @@ function DraftPane(p: PaneProps) {
             <button type="button" className={`plate${t.overflow.length ? ' over' : ''}`} style={{ border: 0, textAlign: 'left', cursor: t.where ? 'pointer' : 'default' }} onClick={(e) => openFact(t, t.id, e.currentTarget)}>
               <div>{t.name}</div>
               <div className="pos">{t.position}</div>
-              {t.where && <span className="sr">. Исходник: {t.where.sourceName}, {t.where.label}</span>}
+              {t.where && <span className="sr">. {t.manualBy ? `Исходник указал вручную ${t.manualBy}` : 'Исходник'}: {t.where.sourceName}, {t.where.label}</span>}
             </button>
           )}
           <div className="form-row">
@@ -735,6 +739,11 @@ function DraftPane(p: PaneProps) {
           )}
         </div>
       </div>
+      {d.manualSources > 0 && d.state !== 'approved' && (
+        <p className="note manual-note">
+          Исходник указан вручную в {d.manualSources} {plural(d.manualSources, 'месте', 'местах', 'местах')}, в колонке таймкодов подпись «вручную». Сервис сам этот исходник не искал: он только нашёл цитату в выбранном месте. Совпадает ли смысл, проверьте перед утверждением.
+        </p>
+      )}
 
       <div className="actions">
         {d.mayReturn && <button type="button" className="btn" onClick={() => setDlg({ type: 'return' })}>Вернуть с комментарием</button>}

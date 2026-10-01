@@ -21,11 +21,13 @@ export type DState =
   | 'not_needed';
 
 export type Place = { surface: string; lemma: string; inDir: boolean };
+// A source the person chose: the code only confirmed the quote is there, not what the fact means.
+export type ManualSource = { userId: string; at: number };
 export type Sentence = {
   id: string;
   text: string;
   noFacts: boolean;
-  facts: { text: string; source: Quoted; link: LinkResult }[];
+  facts: { text: string; source: Quoted; link: LinkResult; manual?: ManualSource }[];
   places: Place[];
   flags: SentenceFlag[];
   checkingUntil?: number; // epoch ms: the source search for an edited sentence ends then
@@ -41,6 +43,7 @@ export type TitleItem = {
   position: string;
   source: Quoted;
   link: LinkResult;
+  manual?: ManualSource;
   dir: 'ok' | 'no_name' | 'position';
   dirExpected?: string;
 };

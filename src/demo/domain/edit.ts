@@ -226,7 +226,7 @@ function applyOp(state: State, ctx: Ctx, story: Story, d: Draft, baseVersion: nu
       const quote = bestQuote(base, fragmentText(story, op.ref));
       if (!quote) throw new DemoError(400, E.noFragment);
       const source = { ref: op.ref, quote };
-      const fact = { text: base, source, link: verifyFact({ text: base, source }, materialOf(story)) };
+      const fact = { text: base, source, link: verifyFact({ text: base, source }, materialOf(story)), manual: { userId: ctx.user.id, at: ctx.now } };
       if (s.facts[op.factIndex]) s.facts[op.factIndex] = fact;
       else s.facts.push(fact);
       s.noFacts = false;
@@ -274,6 +274,7 @@ function applyOp(state: State, ctx: Ctx, story: Story, d: Draft, baseVersion: nu
       const quote = bestQuote(`${t.name} ${t.position}`, fragmentText(story, op.ref));
       if (!quote) throw new DemoError(400, E.noFragment);
       t.source = { ref: op.ref, quote };
+      t.manual = { userId: ctx.user.id, at: ctx.now };
       t.link = verifyFact({ text: `${t.name}, ${t.position}`, source: t.source }, materialOf(story));
       dropDecisions(d, t.id);
       addJournal(state, ctx, story, 'set_source', { draft: d.kind, detail: op.ref, factText: `${t.name}, ${t.position}` });
