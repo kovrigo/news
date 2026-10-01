@@ -142,9 +142,18 @@ function overflowOf(name: string, position: string): string[] {
   return out;
 }
 
+// A chosen source is kept as a fragment id; people see the source and the place.
+function detailOf(state: State, r: JournalRow): string {
+  if (r.action !== 'set_source' || !r.detail) return r.detail ?? '';
+  const story = state.stories.find((s) => s.id === r.storyId);
+  const p = story && placeOfRef(story, r.detail);
+  return p ? `${p.sourceName}, ${p.label}` : r.detail;
+}
+
 function lastJournal(state: State, story: Story, d: Draft): { at: number; text: string } | undefined {
   const row = state.journal.filter((r) => r.storyId === story.id && r.draft === d.kind).sort((a, b) => b.at - a.at || b.id - a.id)[0];
-  return row ? { at: row.at, text: `${row.userName}: ${ACTION_LABELS[row.action] ?? row.action}${row.detail ? `. ${row.detail}` : ''}` } : undefined;
+  const detail = row && detailOf(state, row);
+  return row ? { at: row.at, text: `${row.userName}: ${ACTION_LABELS[row.action] ?? row.action}${detail ? `. ${detail}` : ''}` } : undefined;
 }
 
 export function draftView(state: State, ctx: Ctx, story: Story, d: Draft): DraftView {
@@ -369,7 +378,7 @@ export function journalView(state: State, q: JournalQuery): {
   return {
     rows: rows.map((r) => ({
       id: r.id, at: r.at, userName: r.userName, action: r.action, actionLabel: ACTION_LABELS[r.action] ?? r.action,
-      draft: r.draft ? DRAFT_NAMES[r.draft] : '', storyTitle: r.storyTitle, storyDeleted: !!r.storyDeleted, detail: r.detail ?? '',
+      draft: r.draft ? DRAFT_NAMES[r.draft] : '', storyTitle: r.storyTitle, storyDeleted: !!r.storyDeleted, detail: detailOf(state, r),
       factText: r.storyDeleted && r.action === 'take_over' ? STORY_DELETED : (r.factText ?? ''),
     })),
     total: found.length,
