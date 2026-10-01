@@ -197,6 +197,7 @@ td { padding: 8px 12px; border-top: 1px solid var(--rule); vertical-align: top; 
 @media (max-width: 699px) {
   .controls { flex-wrap: wrap; }
   .controls input[type='range'] { order: 3; flex-basis: 100%; min-height: 44px; }
+  .controls .btn { min-height: 44px; }
 }
 .now-text { background: var(--sheet); border: 1px solid var(--rule); border-top: 0; padding: 8px 12px; font-size: 0.875rem; margin-bottom: 16px; min-height: 3.2em; }
 .frag { border-left: 3px solid var(--rule); padding: 8px 12px; margin: 8px 0; font-size: 1rem; line-height: 1.6; }
