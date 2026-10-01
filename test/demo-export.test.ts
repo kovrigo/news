@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { inflateRawSync } from 'node:zlib';
 import { fileName } from '../src/demo/domain/export.ts';
-import { PAVEL, OLGA, env, key } from './demo-helpers.ts';
+import { ANNA, PAVEL, OLGA, draftOf, env, key } from './demo-helpers.ts';
 
 const dec = (b: Uint8Array): string => new TextDecoder('utf-8', { ignoreBOM: true }).decode(b);
 const DEMO = 'ДЕМО — придуманные данные, не для эфира';
@@ -63,12 +63,27 @@ describe('export: file formats', () => {
       DEMO,
       'Сюжет: Летняя читальня на набережной',
       'Черновик: Подводка',
-      expect.stringMatching(/^Утвердил: Павел Тестов, \d+ \S+ 2026, \d\d:\d\d \(Europe\/Moscow\)$/),
+      expect.stringMatching(/^Утверждено: Павел Тестов, \d+ \S+ 2026, \d\d:\d\d \(Europe\/Moscow\)$/),
       'Версия: 1',
     ] as string[]);
     expect(lines[5]).toBe('-'.repeat(40));
     expect(lines[6]).toBe('На набережной открылась летняя читальня.');
     expect(lines.at(-1)).toBe('');
+  });
+
+  test('the approval line reads the same for any approver: «Утверждено», not a verb with a gender', async () => {
+    const e = await env();
+    const s = e.story('Старого моста');
+    const sy = draftOf(s, 'syncs');
+    expect((await e.call(ANNA, 'POST', `/api/stories/${s.id}/drafts/syncs/approve`, { version: sy.version, basedOn: sy.basedOn, clickKey: key() })).status).toBe(200);
+    for (const format of ['txt', 'docx'] as const) {
+      const r = await e.call(ANNA, 'POST', `/api/stories/${s.id}/export`, { kinds: ['syncs'], format, noHeader: false, clickKey: key() });
+      expect(r.status).toBe(200);
+      const bytes = new Uint8Array(await r.res.arrayBuffer());
+      const text = format === 'txt' ? dec(bytes) : dec((await files(new Response(bytes))).find((p) => p.name === 'word/document.xml')!.data);
+      expect(text).toContain('Утверждено: Анна Пробная, ');
+      expect(text).not.toContain('Утвердил');
+    }
   });
 
   test('the lead-in text file can go without a header, for the teleprompter', async () => {

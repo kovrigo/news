@@ -18,7 +18,8 @@ export function describe(state: State, story: Story, d: Draft): { header: string
   const header = [
     `Сюжет: ${story.title}`,
     `Черновик: ${DRAFT_NAMES[d.kind]}`,
-    `Утвердил: ${userName(state, a.userId)}, ${fmtDateTime(a.at)} (${TIME_ZONE})`,
+    // one word for any approver, as on the sheet's approval mark
+    `Утверждено: ${userName(state, a.userId)}, ${fmtDateTime(a.at)} (${TIME_ZONE})`,
     `Версия: ${a.version}`,
   ];
   const body: string[] = [];
