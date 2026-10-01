@@ -413,6 +413,22 @@ describe('roles', () => {
     const all = await e.call(ANNA, 'GET', '/api/journal');
     expect(all.json.rows.some((r: { action: string; storyDeleted: boolean }) => r.action === 'delete_story' && r.storyDeleted)).toBe(true);
   });
+
+  test('deleting a story drops its typed text from the journal and the state file', async () => {
+    const e = await env();
+    const s = e.story('Старого моста');
+    const seg = s.segments[0]!;
+    expect((await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/return`, { comment: 'Метка-возврата' })).status).toBe(200);
+    expect((await e.call(PAVEL, 'POST', `/api/stories/${s.id}/speakers`, { videoId: seg.videoId, speaker: seg.speaker, name: 'Метка Имени' })).status).toBe(200);
+    expect((await e.call(ANNA, 'GET', '/api/journal')).json.rows.some((r: { detail: string }) => r.detail.includes('Метка-возврата'))).toBe(true);
+    expect((await e.call(ANNA, 'DELETE', `/api/stories/${s.id}`)).status).toBe(200);
+    const rows = (await e.call(ANNA, 'GET', '/api/journal')).json.rows.filter((r: { storyDeleted: boolean }) => r.storyDeleted);
+    expect(rows.length).toBeGreaterThan(2);
+    for (const r of rows) expect(r.detail).toBe('');
+    const file = await Bun.file(e.path).text();
+    expect(file).not.toContain('Метка-возврата');
+    expect(file).not.toContain('Метка Имени');
+  });
 });
 
 describe('processing and failure', () => {

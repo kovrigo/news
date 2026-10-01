@@ -25,7 +25,9 @@ export function deleteStory(state: State, ctx: Ctx, story: Story): void {
   for (const r of state.journal)
     if (r.storyId === story.id) {
       r.storyDeleted = true;
+      // only who, what and when stay: a return comment, a reason or a speaker name is the story's text
       delete r.factText;
+      delete r.detail;
     }
   const row = addJournal(state, ctx, story, 'delete_story');
   row.storyDeleted = true;
