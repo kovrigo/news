@@ -116,8 +116,9 @@ td { padding: 8px 12px; border-top: 1px solid var(--rule); vertical-align: top; 
 .drafts a.draft:hover { background: var(--sheet); }
 .drafts a.draft[aria-current='page'] { border-left-color: var(--text); background: var(--sheet); }
 .drafts .total { border-top: 1px solid var(--rule); margin: var(--lg) 12px 0; padding-top: var(--md); color: var(--muted); font-size: 0.8125rem; }
-.center { padding: var(--lg); display: flex; flex-direction: column; gap: var(--md); overflow: auto; min-width: 0; }
-.right { background: var(--sheet); border-left: 1px solid var(--rule); padding: var(--lg) 20px; overflow: auto; }
+/* relative: hidden screen-reader text stays inside the scrolling column, not below the page */
+.center { padding: var(--lg); display: flex; flex-direction: column; gap: var(--md); overflow: auto; min-width: 0; position: relative; }
+.right { background: var(--sheet); border-left: 1px solid var(--rule); padding: var(--lg) 20px; overflow: auto; position: relative; }
 
 .sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; }
 .sheet-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: var(--md); align-items: flex-start; flex-wrap: wrap; }
