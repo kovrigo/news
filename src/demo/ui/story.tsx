@@ -851,7 +851,7 @@ function ReturnDialog(p: { story: StoryView; draft: DraftView; onClose: () => vo
         }}
       >
         <label className="stack">
-          <span className="muted">Комментарий для {p.story.correspondent}</span>
+          <span className="muted">Комментарий корреспонденту: {p.story.correspondent}</span>
           <textarea rows={4} value={text} maxLength={500} aria-invalid={!!err} aria-describedby="ret-err" data-autofocus onChange={(e) => { setText(e.target.value); setErr(''); }} />
         </label>
         <p id="ret-err" className="field-error" role="alert">{err}</p>
