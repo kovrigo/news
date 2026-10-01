@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { State } from './domain/types.ts';
 
@@ -14,11 +14,15 @@ export const stateExists = (path: string): boolean => existsSync(path);
 export const loadState = (path: string): State => JSON.parse(readFileSync(path, 'utf8')) as State;
 
 // Atomic: write a temporary file next to the state, then rename it over.
+// Typed text lives here: only the owner may open the folder and the file, even if they were made wider earlier.
 export function saveState(path: string, state: State): void {
-  mkdirSync(dirname(path), { recursive: true });
+  const dir = dirname(path);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  chmodSync(dir, 0o700);
   const tmp = `${path}.${process.pid}.tmp`;
   try {
-    writeFileSync(tmp, JSON.stringify(state));
+    writeFileSync(tmp, JSON.stringify(state), { mode: 0o600 });
+    chmodSync(tmp, 0o600);
     renameSync(tmp, path);
   } finally {
     rmSync(tmp, { force: true }); // a failed write must not leave typed text in a stray copy

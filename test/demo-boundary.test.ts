@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { createApp } from '../src/demo/api.ts';
 import { refuseStart } from '../src/demo/boundary.ts';
 import { buildSeed } from '../src/demo/seed.ts';
@@ -186,5 +187,26 @@ describe('boundary 7: requests and typed text', () => {
     expect(draftOf(e.story('спортзала'), 'voiceover').sentences[0]!.text).toBe('Спортзал открыли.');
     const x = await e.call(PAVEL, 'POST', `/api/stories/${s.id}/export`, { kinds: ['voiceover', 'voiceover'], format: 'txt', noHeader: false, clickKey: 'k-12345678' });
     expect(x.status).toBe(400);
+  });
+});
+
+describe('boundary 8: the state file is the owner\'s only', () => {
+  const modes = (p: string): string[] => [p.replace(/\/state\.json$/, ''), p].map((x) => (statSync(x).mode & 0o777).toString(8));
+  const reset = (p: string): number => Bun.spawnSync(['bun', 'run', 'src/demo/reset.ts'], { env: { ...process.env, DEMO_STATE: p } }).exitCode;
+
+  test('reset creates the folder 700 and the file 600; a write and a reset narrow wider rights again', async () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'demo-perm-')), 'state', 'state.json');
+    expect(reset(path)).toBe(0);
+    expect(modes(path)).toEqual(['700', '600']);
+    chmodSync(dirname(path), 0o755);
+    chmodSync(path, 0o644);
+    const app = createApp({ statePath: path, now: () => NOW });
+    const r = await app.fetch(new Request('http://127.0.0.1/api/directory/places', { method: 'POST', body: JSON.stringify({ name: 'Новое место' }), headers: { cookie: `demo_user=${PAVEL}` } }));
+    expect(r.status).toBe(201);
+    expect(modes(path)).toEqual(['700', '600']);
+    chmodSync(dirname(path), 0o755);
+    chmodSync(path, 0o644);
+    expect(reset(path)).toBe(0);
+    expect(modes(path)).toEqual(['700', '600']);
   });
 });
