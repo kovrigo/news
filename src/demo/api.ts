@@ -155,7 +155,7 @@ export function createApp(deps: AppDeps): { fetch: (req: Request) => Promise<Res
       method: 'POST', re: /^\/api\/stories\/([\w-]+)\/drafts\/(\w+)\/approve$/, auth: true,
       run: onDraft((c, s, d) => {
         const b = parse(S.approve, c.body);
-        approveDraft(c.state, ctxOf(c), s, d, b.version, b.clickKey);
+        approveDraft(c.state, ctxOf(c), s, d, b.version, b.basedOn, b.clickKey);
       }),
     },
     { method: 'POST', re: /^\/api\/stories\/([\w-]+)\/drafts\/(\w+)\/return$/, auth: true, run: onDraft((c, s, d) => returnDraft(c.state, ctxOf(c), s, d, parse(S.returnDraft, c.body).comment)) },

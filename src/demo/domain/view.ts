@@ -54,6 +54,7 @@ export type DraftView = {
   state: DState;
   stateWord: string;
   version: number;
+  basedOn: { transcript: number; speakers: number };
   pending: number;
   marks: Mark[];
   approveLabel: string;
@@ -213,6 +214,7 @@ export function draftView(state: State, ctx: Ctx, story: Story, d: Draft): Draft
     state: d.state,
     stateWord: stateWord(d.kind, d.state, !!d.exportedAt && d.state === 'approved'),
     version: d.version,
+    basedOn: d.basedOn,
     pending: marks.filter((m) => m.pending).length,
     marks,
     approveLabel: APPROVE_LABELS[d.kind],

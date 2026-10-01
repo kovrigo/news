@@ -41,7 +41,11 @@ export const decide = so({
 });
 export const recheck = so({ sentenceId: id });
 export const addDir = so({ markKey: z.string().min(1).max(128) });
-export const approve = so({ version: z.number().int().min(0), clickKey: z.string().min(8).max(64) });
+export const approve = so({
+  version: z.number().int().min(0),
+  basedOn: so({ transcript: z.number().int().min(0), speakers: z.number().int().min(0) }),
+  clickKey: z.string().min(8).max(64),
+});
 export const returnDraft = so({ comment });
 export const notNeeded = so({ on: z.boolean() });
 export const exportBody = so({

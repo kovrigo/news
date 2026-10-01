@@ -231,6 +231,9 @@ function applyOp(state: State, ctx: Ctx, story: Story, d: Draft, baseVersion: nu
       else s.facts.push(fact);
       s.noFacts = false;
       s.checkFailed = false;
+      // the person chose the source: a check still pending from an earlier edit must not replace it
+      s.checkingUntil = undefined;
+      s.retry = false;
       s.flags = verifySentence({ text: s.text, noFacts: false, facts: s.facts, places: s.places }, s.facts.map((f) => f.link));
       dropDecisions(d, s.id);
       addJournal(state, ctx, story, 'set_source', { draft: d.kind, detail: op.ref, factText: base });

@@ -57,11 +57,12 @@ export function submitDraft(state: State, ctx: Ctx, story: Story, d: Draft): voi
   addJournal(state, ctx, story, 'submit', { draft: d.kind });
 }
 
-export function approveDraft(state: State, ctx: Ctx, story: Story, d: Draft, version: number, clickKey: string): void {
+// basedOn is what the approver saw: a transcript or speaker change re-checks a draft without a new version.
+export function approveDraft(state: State, ctx: Ctx, story: Story, d: Draft, version: number, basedOn: Draft['basedOn'], clickKey: string): void {
   if (!ctx.user.canApprove) throw new DemoError(403, E.notApprover);
   const key = `approve:${story.id}:${d.kind}:${clickKey}`;
   if (key in state.keys) return;
-  if (version !== d.version) throw new DemoError(409, E.staleVersion);
+  if (version !== d.version || basedOn.transcript !== d.basedOn.transcript || basedOn.speakers !== d.basedOn.speakers) throw new DemoError(409, E.staleVersion);
   const block = approveBlock(state, ctx, story, d);
   if (block) throw new DemoError(409, block);
   d.approval = {

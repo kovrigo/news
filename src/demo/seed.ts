@@ -57,7 +57,7 @@ export async function buildSeed(now: number): Promise<State> {
     computeMarks(draft(s, k), s).find(pick)!.key;
   let click = 0;
   const approve = (s: Story, k: Kind, who: string, t: number): void =>
-    approveDraft(state, at(who, t), s, draft(s, k), draft(s, k).version, `seed-${++click}`);
+    approveDraft(state, at(who, t), s, draft(s, k), draft(s, k).version, draft(s, k).basedOn, `seed-${++click}`);
   const open = async (setId: string, who: string, t: number, fail = false): Promise<Story> => {
     const set = setById(setId)!;
     const story = startStory(state, at(who, t), set, await runSet(set, fail ? set.failKind : undefined));

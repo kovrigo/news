@@ -9,7 +9,7 @@ describe('approval, versions, keys', () => {
     const e = await env();
     const s = e.story('спортзала');
     const v = draftOf(s, 'voiceover').version;
-    const r = await e.call(PAVEL, 'POST', `${base(s, 'voiceover')}/approve`, { version: v, clickKey: key() });
+    const r = await e.call(PAVEL, 'POST', `${base(s, 'voiceover')}/approve`, { version: v, basedOn: draftOf(s, 'voiceover').basedOn, clickKey: key() });
     expect(r.status).toBe(409);
     expect(r.json.error).toBe('4 пометки ждут решения');
     const view = await e.call(PAVEL, 'GET', `/api/stories/${s.id}`);
@@ -27,13 +27,13 @@ describe('approval, versions, keys', () => {
       baseVersion: sy.version, op: { op: 'syncRange', itemId: item.id, startMs: item.startMs, endMs: item.endMs - 500 },
     });
     expect(ed.status).toBe(200);
-    const stale = await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version, clickKey: key() });
+    const stale = await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version, basedOn: sy.basedOn, clickKey: key() });
     expect(stale.status).toBe(409);
     expect(stale.json.error).toBe('Черновик изменился. Проверьте новую версию');
-    const busy = await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version + 1, clickKey: key() });
+    const busy = await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version + 1, basedOn: sy.basedOn, clickKey: key() });
     expect(busy.json.error).toBe('Сейчас правит Ольга Демина');
     await e.call(OLGA, 'POST', `${base(s, 'syncs')}/unlock`, {});
-    const ok = await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version + 1, clickKey: key() });
+    const ok = await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version + 1, basedOn: sy.basedOn, clickKey: key() });
     expect(ok.status).toBe(200);
     const d = ok.json.drafts[1];
     expect(d.stateWord).toBe('Утверждены');
@@ -47,8 +47,8 @@ describe('approval, versions, keys', () => {
     const s = e.story('Старого моста');
     const sy = draftOf(s, 'syncs');
     const k = key();
-    await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version, clickKey: k });
-    await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version, clickKey: k });
+    await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version, basedOn: sy.basedOn, clickKey: k });
+    await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: sy.version, basedOn: sy.basedOn, clickKey: k });
     expect(e.state().journal.filter((r) => r.storyId === s.id && r.action === 'approve' && r.draft === 'syncs')).toHaveLength(1);
     const x = key();
     const body = { kinds: ['syncs'], format: 'txt', noHeader: false, clickKey: x };
@@ -341,7 +341,7 @@ describe('roles', () => {
     const s = e.story('читальня');
     const sy = draftOf(e.story('Старого моста'), 'syncs');
     const old = e.story('Старого моста');
-    expect((await e.call(OLGA, 'POST', `${base(old, 'syncs')}/approve`, { version: sy.version, clickKey: key() })).status).toBe(403);
+    expect((await e.call(OLGA, 'POST', `${base(old, 'syncs')}/approve`, { version: sy.version, basedOn: sy.basedOn, clickKey: key() })).status).toBe(403);
     expect((await e.call(OLGA, 'POST', `${base(old, 'syncs')}/return`, { comment: 'нет' })).status).toBe(403);
     expect((await e.call(OLGA, 'DELETE', `/api/stories/${s.id}`)).status).toBe(403);
     expect((await e.call(PAVEL, 'DELETE', `/api/stories/${s.id}`)).status).toBe(403);
@@ -491,5 +491,41 @@ describe('processing and failure', () => {
     expect(done.approved).toBe(5);
     expect(done.timeToApprovalMs).toBe(2 * 3600_000 + 4 * 60_000);
     expect(pavel.stories.map((s: { day: string }) => s.day).filter((d: string, i: number, a: string[]) => a.indexOf(d) === i).length).toBeGreaterThan(1);
+  });
+});
+
+describe('second opinion fixes', () => {
+  test('a speaker rename after the approver opened the draft makes the old approval request stale', async () => {
+    const e = await env();
+    const s = e.story('Старого моста');
+    const sy = draftOf(s, 'syncs');
+    expect(sy.state).toBe('review');
+    const seg = s.segments[0]!;
+    const seen = (await e.call(PAVEL, 'GET', `/api/stories/${s.id}`)).json.drafts[1];
+    expect((await e.call(OLGA, 'POST', `/api/stories/${s.id}/speakers`, { videoId: seg.videoId, speaker: seg.speaker, name: 'Новое Имя' })).status).toBe(200);
+    expect(draftOf(e.story('Старого моста'), 'syncs').version).toBe(sy.version);
+    const old = await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: seen.version, basedOn: seen.basedOn, clickKey: key() });
+    expect(old.status).toBe(409);
+    expect(old.json.error).toBe('Черновик изменился. Проверьте новую версию');
+    const now = (await e.call(PAVEL, 'GET', `/api/stories/${s.id}`)).json.drafts[1];
+    expect((await e.call(PAVEL, 'POST', `${base(s, 'syncs')}/approve`, { version: now.version, basedOn: now.basedOn, clickKey: key() })).status).toBe(200);
+  });
+
+  test('a source chosen while an earlier edit is still being checked is kept', async () => {
+    const e = await env();
+    const s = e.story('Старого моста');
+    const vo = draftOf(s, 'voiceover');
+    await e.call(OLGA, 'POST', `${base(s, 'voiceover')}/lock`, {});
+    const sid = vo.sentences.find((x) => x.text.startsWith('Рядом с мостом'))!.id;
+    const r = await e.call(OLGA, 'POST', `${base(s, 'voiceover')}/edit`, { baseVersion: vo.version, op: { op: 'setText', sentenceId: sid, text: 'Мост закроют на девяносто дней.' } });
+    expect(r.json.drafts[3].sentences.find((x: { id: string }) => x.id === sid).checking).toBe(true);
+    const ref = s.paragraphs[0]!.id;
+    const src = await e.call(OLGA, 'POST', `${base(s, 'voiceover')}/edit`, { baseVersion: r.json.drafts[3].version, op: { op: 'setSource', sentenceId: sid, factIndex: 0, ref } });
+    expect(src.status).toBe(200);
+    e.advance(2000);
+    await e.call(OLGA, 'GET', `/api/stories/${s.id}`);
+    const kept = draftOf(e.story('Старого моста'), 'voiceover').sentences.find((x) => x.id === sid)!;
+    expect(kept.checkingUntil).toBeUndefined();
+    expect(kept.facts[0]!.source?.ref).toBe(ref);
   });
 });

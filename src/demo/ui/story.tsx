@@ -243,10 +243,10 @@ function ExportDialog(p: { story: StoryView; onClose: () => void; announce: (t: 
       const name = await download(`/api/stories/${p.story.id}/export`, { kinds: chosen, format, noHeader: lead && noHeader, clickKey: clickKey.current });
       p.announce(`Файл выгружен: ${name}`);
       p.onClose();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
       clickKey.current = crypto.randomUUID(); // a double click shares the key; the next export gets its own journal row
+    } catch (e) {
+      // the server may have recorded the export before the answer was lost: a retry keeps the key
+      setError((e as Error).message);
     }
   };
   return (
@@ -742,7 +742,7 @@ function DraftPane(p: PaneProps) {
           <>
             <button
               type="button" className="btn primary" aria-disabled={!!approveReason || !online} aria-describedby="why-approve"
-              onClick={() => !approveReason && online && void act('approve', { version: d.version, clickKey: approveKey })}
+              onClick={() => !approveReason && online && void act('approve', { version: d.version, basedOn: d.basedOn, clickKey: approveKey })}
             >
               {d.approveLabel}
             </button>
@@ -789,10 +789,10 @@ function DraftPane(p: PaneProps) {
       const name = await download(`/api/stories/${story.id}/export`, { kinds: [d.kind], format, noHeader: format === 'txt' && d.kind === 'leadin' && noHeader, clickKey: exportKey.current });
       announce(`Файл выгружен: ${name}`);
       setMsg('');
-    } catch (e) {
-      setMsg((e as ApiError).message);
-    } finally {
       exportKey.current = crypto.randomUUID();
+    } catch (e) {
+      // the server may have recorded the export before the answer was lost: a retry keeps the key
+      setMsg((e as ApiError).message);
     }
   }
 }
