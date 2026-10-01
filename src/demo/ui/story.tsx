@@ -646,7 +646,7 @@ function DraftPane(p: PaneProps) {
         </div>
       )}
       {d.state === 'preparing' && <div className="band info"><b role="status">Готовится</b><span>{story.processing ? `${story.processing.label}. Осталось примерно ${Math.max(1, Math.round(story.processing.remainingMs / 1000))} с` : 'Черновик скоро откроется'}</span></div>}
-      {d.state === 'not_built' && <div className="band check" role="note"><b>Не построен: мало материала</b><span>{d.notBuiltNote ? `Не хватает: ${d.notBuiltNote}.` : ''} Принять как есть, дописать вручную или отметить, что черновик не нужен.</span></div>}
+      {d.state === 'not_built' && <div className="band check" role="note"><b>Не построен: мало материала</b><span>{d.notBuiltNote ? `Не хватает: ${d.notBuiltNote}.` : ''} Принять как есть{d.mayNotNeeded ? ', дописать вручную или отметить, что черновик не нужен' : ' или дописать вручную'}.</span></div>}
       {unsent.length > 0 && (
         <div className="band returned" role="alert">
           <b>Черновик изменился, пока не было связи. Ничего не применено. Перенесите текст вручную:</b>
