@@ -132,6 +132,7 @@ td { padding: 8px 12px; border-top: 1px solid var(--rule); vertical-align: top; 
 .src { border: 0; background: none; padding: 4px 0; text-align: left; cursor: pointer; color: var(--primary); font: 400 0.875rem/1.4 var(--f-mono); font-feature-settings: 'tnum'; }
 .src small { display: block; font: 500 0.8125rem/1.3 var(--f-ui); color: var(--muted); }
 .src:hover { background: var(--tint); }
+.src small.manual { color: var(--check-text); font-weight: 600; }
 .src.none { color: var(--check-text); font: 600 0.8125rem/1.3 var(--f-ui); cursor: default; }
 .src.none:hover { background: none; }
 .src.taken { color: var(--approved); font: 600 0.8125rem/1.3 var(--f-ui); cursor: default; }
@@ -160,7 +161,6 @@ td { padding: 8px 12px; border-top: 1px solid var(--rule); vertical-align: top; 
 .review-note { display: flex; gap: var(--sm); align-items: flex-start; font-size: 0.875rem; }
 .review-note .icon { background: var(--check); padding: 0 8px; font-weight: 600; border-radius: 2px; }
 .review-note .icon.ok { background: var(--approved-tint); color: var(--approved); }
-.manual-note { color: var(--text); font-size: 0.875rem; margin: var(--sm) 0 0; }
 .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .journal-line { color: var(--muted); font-size: 0.8125rem; }
 

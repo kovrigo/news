@@ -420,7 +420,7 @@ function DraftPane(p: PaneProps) {
             f.status === 'linked' ? (
               <button key={f.index} type="button" tabIndex={-1} className="src" onClick={(e) => openFact(f, s.id, e.currentTarget)}>
                 {f.where?.label}<small>{f.where?.sourceName}</small>
-                {f.manualBy && <small>вручную: {f.manualBy}</small>}
+                {f.manualBy && <small className="manual">вручную: {f.manualBy}</small>}
               </button>
             ) : f.status === 'taken' ? (
               <div key={f.index} className="src taken">Взято на себя<small>{f.takenBy}</small></div>
@@ -515,7 +515,7 @@ function DraftPane(p: PaneProps) {
           {t.where && t.status !== 'no_source' ? (
             <button type="button" tabIndex={-1} className="src" onClick={(e) => openFact(t, t.id, e.currentTarget)}>
               {t.where.label}<small>{t.where.sourceName}</small>
-              {t.manualBy && <small>вручную: {t.manualBy}</small>}
+              {t.manualBy && <small className="manual">вручную: {t.manualBy}</small>}
             </button>
           ) : t.status === 'taken' ? (
             <div className="src taken">Взято на себя<small>{t.takenBy}</small></div>
@@ -740,9 +740,12 @@ function DraftPane(p: PaneProps) {
         </div>
       </div>
       {d.manualSources > 0 && d.state !== 'approved' && (
-        <p className="note manual-note">
-          Исходник указан вручную в {d.manualSources} {plural(d.manualSources, 'месте', 'местах', 'местах')}, в колонке таймкодов подпись «вручную». Сервис сам этот исходник не искал: он только нашёл цитату в выбранном месте. Совпадает ли смысл, проверьте перед утверждением.
-        </p>
+        <div className="review-note" role="note">
+          <span className="icon" aria-hidden="true">!</span>
+          <p>
+            <b>Исходник указан вручную в {d.manualSources} {plural(d.manualSources, 'месте', 'местах', 'местах')}.</b> В колонке таймкодов подпись «вручную». Сервис сам этот исходник не искал: он только нашёл цитату в выбранном месте. Совпадает ли смысл, проверьте перед утверждением.
+          </p>
+        </div>
       )}
 
       <div className="actions">
