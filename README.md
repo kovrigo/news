@@ -2,6 +2,14 @@
 
 The demo shows the whole work with a draft package of one story: three roles, the story screen from mockup A, yellow marks and decisions, editing, approval, return, export, journal, staff, directory, delete. **All people, places, organisations and events are invented. The demo uses invented data only.** Nothing is uploaded, no model is called, and the code has no client for outside services: the browser talks only to the demo's own server. Processing runs only on the recorded mock adapters.
 
+## Documentation
+
+- [Первый проход по демо](docs/tutorial-demo-first-walkthrough.md): tutorial, one story through all three roles.
+- [Как запустить, сбросить и остановить демо](docs/how-to-run-and-reset-demo.md): how-to, including the board link.
+- [Справочник демо](docs/reference-demo.md): reference, accounts, rights, sets, states, marks, commands, refusals.
+- [Границы демо и почему они такие](docs/explanation-demo-boundaries.md): explanation, what waits for the legal, user and technical checks.
+- [Changelog](CHANGELOG.md).
+
 ## View the demo
 
 ```
