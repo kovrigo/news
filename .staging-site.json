@@ -1,0 +1,4 @@
+{
+  "cmd": "scripts/staging-site.sh $PORT",
+  "url_path": "/"
+}
